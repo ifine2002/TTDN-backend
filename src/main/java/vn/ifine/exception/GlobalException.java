@@ -5,6 +5,7 @@ import java.util.Date;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -71,6 +72,21 @@ public class GlobalException {
   @ExceptionHandler(value = {ConstraintViolationException.class})
   @ResponseStatus(BAD_REQUEST)
   public ResponseEntity<ErrorResponse<Object>> handleConstraintViolationException(ConstraintViolationException ex, WebRequest request) {
+    log.error("Exception caught: ", ex);  // Log toàn bộ stack trace
+    ErrorResponse<Object> errorResponse = ErrorResponse.builder()
+        .timestamp(new Date())
+        .status(BAD_REQUEST.value())
+        .error(BAD_REQUEST.getReasonPhrase())
+        .message(ex.getMessage())
+        .path(request.getDescription(false).replace("uri=", ""))
+        .build();
+
+    return ResponseEntity.status(BAD_REQUEST).body(errorResponse);
+  }
+
+  @ExceptionHandler(value = {HttpMessageNotReadableException.class})
+  @ResponseStatus(BAD_REQUEST)
+  public ResponseEntity<ErrorResponse<Object>> handleEnumValidationException(HttpMessageNotReadableException ex, WebRequest request) {
     log.error("Exception caught: ", ex);  // Log toàn bộ stack trace
     ErrorResponse<Object> errorResponse = ErrorResponse.builder()
         .timestamp(new Date())

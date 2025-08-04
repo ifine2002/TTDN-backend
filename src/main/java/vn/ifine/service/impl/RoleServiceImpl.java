@@ -20,7 +20,6 @@ import vn.ifine.specification.GenericSpecification;
 @Service
 @Slf4j(topic = "ROLE-SERVICE-IMPL")
 @RequiredArgsConstructor
-
 public class RoleServiceImpl implements RoleService {
 
   private final RoleRepository roleRepository;
