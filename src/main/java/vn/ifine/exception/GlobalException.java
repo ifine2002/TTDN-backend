@@ -4,8 +4,12 @@ import jakarta.validation.ConstraintViolationException;
 import java.util.Date;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.InternalAuthenticationServiceException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -69,9 +73,52 @@ public class GlobalException {
     return ResponseEntity.status(CONFLICT).body(errorResponse);
   }
 
+  @ExceptionHandler(value = {CustomAuthenticationException.class, InternalAuthenticationServiceException.class})
+  public ResponseEntity<ErrorResponse<Object>> handleAuthenticationException(
+      Exception ex, WebRequest request) {
+    log.error("Exception caught: ", ex);  // Log toàn bộ stack trace
+    HttpStatus status = HttpStatus.UNAUTHORIZED; // mặc định
+
+    // Kiểm tra nếu là InternalAuthenticationServiceException và chứa nguyên nhân là CustomAuthenticationException
+    if (ex instanceof InternalAuthenticationServiceException && ex.getCause() instanceof CustomAuthenticationException) {
+      CustomAuthenticationException customEx = (CustomAuthenticationException) ex.getCause();
+      status = customEx.getStatus();
+    }
+
+    // Nếu là CustomAuthenticationException trực tiếp
+    if (ex instanceof CustomAuthenticationException) {
+      status = ((CustomAuthenticationException) ex).getStatus();
+    }
+
+    ErrorResponse<Object> errorResponse = ErrorResponse.builder()
+        .timestamp(new Date())
+        .status(status.value())
+        .error(status.getReasonPhrase())
+        .message(ex.getMessage())
+        .path(request.getDescription(false).replace("uri=", ""))
+        .build();
+
+    return ResponseEntity.status(status).body(errorResponse);
+  }
+
   @ExceptionHandler(value = {ConstraintViolationException.class})
   @ResponseStatus(BAD_REQUEST)
   public ResponseEntity<ErrorResponse<Object>> handleConstraintViolationException(ConstraintViolationException ex, WebRequest request) {
+    log.error("Exception caught: ", ex);  // Log toàn bộ stack trace
+    ErrorResponse<Object> errorResponse = ErrorResponse.builder()
+        .timestamp(new Date())
+        .status(BAD_REQUEST.value())
+        .error(BAD_REQUEST.getReasonPhrase())
+        .message(ex.getMessage())
+        .path(request.getDescription(false).replace("uri=", ""))
+        .build();
+
+    return ResponseEntity.status(BAD_REQUEST).body(errorResponse);
+  }
+
+  @ExceptionHandler(value = {InvalidTokenException.class, UsernameNotFoundException.class, BadCredentialsException.class})
+  @ResponseStatus(BAD_REQUEST)
+  public ResponseEntity<ErrorResponse<Object>> handleExceptionAuth(Exception ex, WebRequest request) {
     log.error("Exception caught: ", ex);  // Log toàn bộ stack trace
     ErrorResponse<Object> errorResponse = ErrorResponse.builder()
         .timestamp(new Date())
@@ -98,6 +145,8 @@ public class GlobalException {
 
     return ResponseEntity.status(BAD_REQUEST).body(errorResponse);
   }
+
+
 
   @ExceptionHandler(Exception.class)
   @ResponseStatus(INTERNAL_SERVER_ERROR)

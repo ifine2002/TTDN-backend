@@ -10,6 +10,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import vn.ifine.dto.request.ReqCreateUser;
+import vn.ifine.dto.request.ReqRegisterDTO;
 import vn.ifine.dto.request.ReqUpdateUser;
 import vn.ifine.dto.response.ResultPaginationDTO;
 import vn.ifine.dto.response.UserResponse;
@@ -42,8 +43,8 @@ public class UserServiceImpl implements UserService {
 
   @Override
   public UserResponse createUser(ReqCreateUser request) {
-    //check email
-    if(this.isEmailExist(request.getEmail())){
+    // check email
+    if (this.isEmailExist(request.getEmail())) {
       throw new ResourceAlreadyExistsException("Email = " + request.getEmail() + " already exist");
     }
     User user = User.builder()
@@ -58,7 +59,7 @@ public class UserServiceImpl implements UserService {
         .build();
     String hashPassword = this.passwordEncoder.encode(request.getPassword());
     user.setPassword(hashPassword);
-    if(request.getRole() !=null){
+    if (request.getRole() != null) {
       Role role = roleService.getById(request.getRole().getId());
       user.setRole(role);
     }
@@ -90,12 +91,11 @@ public class UserServiceImpl implements UserService {
     Role role = roleService.getById(roleId);
     user.setRole(role);
 
-    //save
+    // save
     user = userRepository.save(user);
     log.info("User has been changed role successfully, id={}", user.getId());
     return this.convertToUserResponse(user);
   }
-
 
   @Override
   public void remove(long id) {
@@ -113,13 +113,12 @@ public class UserServiceImpl implements UserService {
     log.info("User has been changed status successfully, id={}", user.getId());
   }
 
-
   @Override
   public User getUserByEmail(String email) {
-    if(!this.isEmailExist(email)){
-      throw  new ResourceNotFoundException("Email = " + email + " does not exist");
-    }
     User user = userRepository.findByEmail(email);
+    if (user == null) {
+      throw new ResourceNotFoundException("Bad credentials");
+    }
     log.info("Get user by email successfully, id={}", user.getId());
     return user;
   }
@@ -150,12 +149,17 @@ public class UserServiceImpl implements UserService {
 
   @Override
   public void updateUserToken(String token, String email) {
-
+    User currentUser = this.getUserByEmail(email);
+    if (currentUser != null) {
+      currentUser.setRefreshToken(token);
+      this.userRepository.save(currentUser);
+    }
+    log.info("Updated token success, userId= {}", currentUser.getId());
   }
 
   @Override
   public User getUserByRefreshAndEmail(String token, String email) {
-    return null;
+    return this.userRepository.findByRefreshTokenAndEmail(token, email);
   }
 
   @Override
@@ -182,7 +186,7 @@ public class UserServiceImpl implements UserService {
     // Kết hợp điều kiện isActive với các điều kiện khác
     Specification<User> activeSpec = UserSpecification.withFilter(spec);
 
-    Page<User> pageUser= userRepository.findAll(activeSpec, pageable);
+    Page<User> pageUser = userRepository.findAll(activeSpec, pageable);
     ResultPaginationDTO rs = new ResultPaginationDTO();
 
     rs.setPage(pageable.getPageNumber() + 1);

@@ -18,3 +18,24 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
         format_sql: true
+  mail:
+    from: ${MAIL_FROM}
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+    servlet:
+      multipart:
+        max-file-size: 50MB
+        max-request-size: 50MB
+jwt:
+  access-token: TRrx3ZoD9xgevlM73MU8/ay9VO+8RJ7NjvFh5Ab0xoTsKzuPYwCOKDZugGYsVxroYRfP94DH6jBxBhFyBPaQQQ==
+  refresh-token: TRrx3ZoD9xgevlM73MU8/yy9VO+8RJ7NjvFh5Ab0xoTsKuuPYwCOKDZugGYsVeroYRfP94DH6jBxBhFyBPaQQQ==
+  access-token-validity-in-seconds: 8640000
+  refresh-token-validity-in-seconds: 8640000

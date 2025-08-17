@@ -4,6 +4,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import vn.ifine.dto.request.ReqCreateUser;
+import vn.ifine.dto.request.ReqRegisterDTO;
 import vn.ifine.dto.request.ReqUpdateUser;
 import vn.ifine.dto.response.ResultPaginationDTO;
 import vn.ifine.dto.response.UserResponse;
@@ -29,12 +30,7 @@ public interface UserService {
 
   boolean isEmailExist(String email);
 
-//  ResCreateUserDTO convertToResCreateUserDTO(User user);
   UserResponse convertToUserResponse(User user);
-
-//  ResUserDTO convertToResUserDTO(User user);
-
-//  ResUpdateUserDTO convertToResUpdateUserDTO(User user);
 
   void updateUserToken(String token, String email);
 
