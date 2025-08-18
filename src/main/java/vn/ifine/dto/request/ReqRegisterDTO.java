@@ -12,6 +12,9 @@ public class ReqRegisterDTO {
   @NotBlank(message = "password must be not blank")
   private String password;
 
+  @NotBlank(message = "confirmPassword must be not blank")
+  private String confirmPassword;
+
   @NotBlank(message = "fullName must be not blank")
   private String fullName;
 }

@@ -3,9 +3,12 @@ package vn.ifine.service;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+import vn.ifine.dto.request.ReqChangePassword;
 import vn.ifine.dto.request.ReqCreateUser;
-import vn.ifine.dto.request.ReqRegisterDTO;
+import vn.ifine.dto.request.ReqChangeInfo;
 import vn.ifine.dto.request.ReqUpdateUser;
+import vn.ifine.dto.response.ResInfoUser;
 import vn.ifine.dto.response.ResultPaginationDTO;
 import vn.ifine.dto.response.UserResponse;
 import vn.ifine.model.User;
@@ -22,10 +25,6 @@ public interface UserService {
 
   void remove(long id);
 
-  void changeStatus(long id, UserStatus status);
-
-  UserResponse changeRole(long userId, int roleId);
-
   User getUserByEmail(String email);
 
   boolean isEmailExist(String email);
@@ -38,5 +37,12 @@ public interface UserService {
 
   ResultPaginationDTO getAll(Specification<User> spec, Pageable pageable);
 
-  ResultPaginationDTO getAllActive(Specification<User> spec, Pageable pageable);
+
+  UserResponse changeInfo(String email, ReqChangeInfo request);
+
+  void changePassword(String email, ReqChangePassword request);
+
+  ResultPaginationDTO searchUser(Pageable pageable, String keyword);
+
+  ResInfoUser getInfoUser(Long id);
 }

@@ -15,11 +15,3 @@ public class GenericSpecification<T> {
     return Specification.where(GenericSpecification.<T>isActive()).and(spec);
   }
 }
-
-/** check với điều kiện khác
- * public static <T> Specification<T> isActive(String fieldName) { return (root, query, cb) ->
- * cb.equal(root.get(fieldName), true); }
- * <p>
- * public static <T> Specification<T> withFilter(Specification<T> spec, String fieldName) { return
- * Specification.where(GenericSpecification.<T>isActive(fieldName)).and(spec); }
- */

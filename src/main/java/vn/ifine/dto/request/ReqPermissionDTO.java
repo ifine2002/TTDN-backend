@@ -1,12 +1,10 @@
 package vn.ifine.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
-import java.util.List;
 import lombok.Getter;
-import vn.ifine.model.Role;
 
 @Getter
-public class PermissionRequestDTO {
+public class ReqPermissionDTO {
 
   @NotBlank(message = "name must be not blank")
   private String name;

@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import static org.springframework.http.HttpStatus.*;
 
@@ -27,7 +28,8 @@ public class GlobalException {
   // xử lý lỗi khi valid dữ liệu (@Valid)
   @ExceptionHandler(MethodArgumentNotValidException.class)
   @ResponseStatus(BAD_REQUEST)
-  public ResponseEntity<ErrorResponse<Object>> validationError(MethodArgumentNotValidException ex, WebRequest request) {
+  public ResponseEntity<ErrorResponse<Object>> validationError(MethodArgumentNotValidException ex,
+      WebRequest request) {
     log.error("Exception caught: ", ex);  // Log toàn bộ stack trace
     BindingResult result = ex.getBindingResult();
     final List<FieldError> fieldErrors = result.getFieldErrors();
@@ -43,9 +45,10 @@ public class GlobalException {
     return ResponseEntity.status(BAD_REQUEST).body(errorResponse);
   }
 
-  @ExceptionHandler(value = { ResourceNotFoundException.class})
+  @ExceptionHandler(value = {ResourceNotFoundException.class})
   @ResponseStatus(BAD_REQUEST)
-  public ResponseEntity<ErrorResponse<Object>> handleResourceNotFoundException(ResourceNotFoundException ex, WebRequest request) {
+  public ResponseEntity<ErrorResponse<Object>> handleResourceNotFoundException(
+      ResourceNotFoundException ex, WebRequest request) {
     log.error("Exception caught: ", ex);  // Log toàn bộ stack trace
     ErrorResponse<Object> errorResponse = ErrorResponse.builder()
         .timestamp(new Date())
@@ -60,7 +63,8 @@ public class GlobalException {
 
   @ExceptionHandler(value = {ResourceAlreadyExistsException.class})
   @ResponseStatus(CONFLICT)
-  public ResponseEntity<ErrorResponse<Object>> handleResourceAlreadyExistsException(ResourceAlreadyExistsException ex, WebRequest request) {
+  public ResponseEntity<ErrorResponse<Object>> handleResourceAlreadyExistsException(
+      ResourceAlreadyExistsException ex, WebRequest request) {
     log.error("Exception caught: ", ex);  // Log toàn bộ stack trace
     ErrorResponse<Object> errorResponse = ErrorResponse.builder()
         .timestamp(new Date())
@@ -73,14 +77,16 @@ public class GlobalException {
     return ResponseEntity.status(CONFLICT).body(errorResponse);
   }
 
-  @ExceptionHandler(value = {CustomAuthenticationException.class, InternalAuthenticationServiceException.class})
+  @ExceptionHandler(value = {CustomAuthenticationException.class,
+      InternalAuthenticationServiceException.class})
   public ResponseEntity<ErrorResponse<Object>> handleAuthenticationException(
       Exception ex, WebRequest request) {
     log.error("Exception caught: ", ex);  // Log toàn bộ stack trace
     HttpStatus status = HttpStatus.UNAUTHORIZED; // mặc định
 
     // Kiểm tra nếu là InternalAuthenticationServiceException và chứa nguyên nhân là CustomAuthenticationException
-    if (ex instanceof InternalAuthenticationServiceException && ex.getCause() instanceof CustomAuthenticationException) {
+    if (ex instanceof InternalAuthenticationServiceException
+        && ex.getCause() instanceof CustomAuthenticationException) {
       CustomAuthenticationException customEx = (CustomAuthenticationException) ex.getCause();
       status = customEx.getStatus();
     }
@@ -103,7 +109,8 @@ public class GlobalException {
 
   @ExceptionHandler(value = {ConstraintViolationException.class})
   @ResponseStatus(BAD_REQUEST)
-  public ResponseEntity<ErrorResponse<Object>> handleConstraintViolationException(ConstraintViolationException ex, WebRequest request) {
+  public ResponseEntity<ErrorResponse<Object>> handleConstraintViolationException(
+      ConstraintViolationException ex, WebRequest request) {
     log.error("Exception caught: ", ex);  // Log toàn bộ stack trace
     ErrorResponse<Object> errorResponse = ErrorResponse.builder()
         .timestamp(new Date())
@@ -116,14 +123,15 @@ public class GlobalException {
     return ResponseEntity.status(BAD_REQUEST).body(errorResponse);
   }
 
-  @ExceptionHandler(value = {InvalidTokenException.class, UsernameNotFoundException.class, BadCredentialsException.class})
+  @ExceptionHandler(value = {MethodArgumentTypeMismatchException.class})
   @ResponseStatus(BAD_REQUEST)
-  public ResponseEntity<ErrorResponse<Object>> handleExceptionAuth(Exception ex, WebRequest request) {
+  public ResponseEntity<ErrorResponse<Object>> handleMethodArgumentTypeMismatchException(
+      MethodArgumentTypeMismatchException ex, WebRequest request) {
     log.error("Exception caught: ", ex);  // Log toàn bộ stack trace
     ErrorResponse<Object> errorResponse = ErrorResponse.builder()
         .timestamp(new Date())
         .status(BAD_REQUEST.value())
-        .error(BAD_REQUEST.getReasonPhrase())
+        .error("Incorrect data type")
         .message(ex.getMessage())
         .path(request.getDescription(false).replace("uri=", ""))
         .build();
@@ -131,9 +139,26 @@ public class GlobalException {
     return ResponseEntity.status(BAD_REQUEST).body(errorResponse);
   }
 
-  @ExceptionHandler(value = {HttpMessageNotReadableException.class})
+  @ExceptionHandler(value = {InvalidTokenException.class, UsernameNotFoundException.class,
+      BadCredentialsException.class, CustomException.class})
   @ResponseStatus(BAD_REQUEST)
-  public ResponseEntity<ErrorResponse<Object>> handleEnumValidationException(HttpMessageNotReadableException ex, WebRequest request) {
+  public ResponseEntity<ErrorResponse<Object>> handleExceptionAuth(Exception ex,
+      WebRequest request) {
+    log.error("Exception caught: ", ex);  // Log toàn bộ stack trace
+    ErrorResponse<Object> errorResponse = ErrorResponse.builder()
+        .timestamp(new Date())
+        .status(BAD_REQUEST.value())
+        .error(BAD_REQUEST.getReasonPhrase())
+        .message(ex.getMessage())
+        .path(request.getDescription(false).replace("uri=", ""))
+        .build();
+    return ResponseEntity.status(BAD_REQUEST).body(errorResponse);
+  }
+
+  @ExceptionHandler(value = {HttpMessageNotReadableException.class, IllegalArgumentException.class})
+  @ResponseStatus(BAD_REQUEST)
+  public ResponseEntity<ErrorResponse<Object>> handleEnumValidationException(
+      HttpMessageNotReadableException ex, WebRequest request) {
     log.error("Exception caught: ", ex);  // Log toàn bộ stack trace
     ErrorResponse<Object> errorResponse = ErrorResponse.builder()
         .timestamp(new Date())
@@ -145,7 +170,6 @@ public class GlobalException {
 
     return ResponseEntity.status(BAD_REQUEST).body(errorResponse);
   }
-
 
 
   @ExceptionHandler(Exception.class)
@@ -153,16 +177,32 @@ public class GlobalException {
   public ResponseEntity<ErrorResponse<Object>> handleAllUncaughtException(
       Exception ex,
       WebRequest request) {
-    log.error("Unknown error occurred", ex);
+    log.error("Internal Server Error", ex);
     ErrorResponse<Object> errorResponse = ErrorResponse.builder()
         .timestamp(new Date())
         .status(INTERNAL_SERVER_ERROR.value())
-        .error("Unknown error occurred")
+        .error("Internal Server Error")
         .message(ex.getMessage())
         .path(request.getDescription(false).replace("uri=", ""))
         .build();
 
     return ResponseEntity.status(INTERNAL_SERVER_ERROR).body(errorResponse);
+  }
+
+  @ExceptionHandler(value = {PermissionException.class})
+  @ResponseStatus(FORBIDDEN)
+  public ResponseEntity<ErrorResponse<Object>> handlePermissionException(
+      Exception ex, WebRequest request) {
+    log.error("Exception caught: ", ex);  // Log toàn bộ stack trace
+    ErrorResponse<Object> errorResponse = ErrorResponse.builder()
+        .timestamp(new Date())
+        .status(FORBIDDEN.value())
+        .error(FORBIDDEN.getReasonPhrase())
+        .message(ex.getMessage())
+        .path(request.getDescription(false).replace("uri=", ""))
+        .build();
+
+    return ResponseEntity.status(FORBIDDEN).body(errorResponse);
   }
 
 

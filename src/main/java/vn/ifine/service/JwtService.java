@@ -11,5 +11,9 @@ public interface JwtService {
 
   String createRefreshToken(String email, ResLoginDTO dto);
 
+  String createResetToken(String email);
+
   Jwt checkValidRefreshToken(String token);
+
+  Jwt checkValidResetToken(String token);
 }

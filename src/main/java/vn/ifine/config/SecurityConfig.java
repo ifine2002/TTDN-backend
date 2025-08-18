@@ -1,4 +1,4 @@
-package vn.ifine.configuration;
+package vn.ifine.config;
 
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import com.nimbusds.jose.util.Base64;
@@ -7,12 +7,9 @@ import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -37,6 +34,9 @@ public class SecurityConfig {
   @Value("${jwt.refresh-token}")
   private String jwtKeyRefresh;
 
+  @Value("${jwt.reset-token}")
+  private String jwtKeyReset;
+
   @Bean
   public PasswordEncoder passwordEncoder() {
     return new BCryptPasswordEncoder();
@@ -45,9 +45,11 @@ public class SecurityConfig {
   @Bean
   public SecurityFilterChain filterChain(HttpSecurity http,
       CustomAuthenticationEntryPoint customAuthenticationEntryPoint) throws Exception {
-    String[] whiteList = { "/", "/auth/**", "/storage/**", "/v3/api-docs/**",
-        "/swagger-ui/**",
-        "/swagger-ui.html" };
+    String[] whiteList = { "/auth/**", "/v3/api-docs/**",
+        "/swagger-ui/**", "/ws/**", "/*.html", "/book/home-page", "/book/detail-book/**", "/book/explore",
+        "/book/search", "/user/search", "/user/profile/**", "/follow/list-following", "/swagger-ui.html",
+        "/book/list-book-user", "/favorite-book/books-of-user/**"
+    };
     http
         .csrf(c -> c.disable())
         .cors(Customizer.withDefaults())
@@ -58,7 +60,7 @@ public class SecurityConfig {
         .oauth2ResourceServer(oauth2 -> oauth2
             .jwt(Customizer.withDefaults())
             .authenticationEntryPoint(customAuthenticationEntryPoint))
-            // Cấu hình bộ lọc JWT chỉ áp dụng cho các đường dẫn không nằm trong whitelist
+        // Cấu hình bộ lọc JWT chỉ áp dụng cho các đường dẫn không nằm trong whitelist
         .formLogin(f -> f.disable())
         // cấu hình sử dụng mô hình stateless
         .sessionManagement((sessionManagement) -> sessionManagement
@@ -103,6 +105,11 @@ public class SecurityConfig {
     return new NimbusJwtEncoder(new ImmutableSecret<>(geKey(TokenType.REFRESH)));
   }
 
+  @Bean("resetTokenEncoder")
+  public JwtEncoder resetTokenEncoder() {
+    return new NimbusJwtEncoder(new ImmutableSecret<>(geKey(TokenType.RESET)));
+  }
+
   private SecretKey geKey(TokenType type) {
     switch (type) {
       case ACCESS -> {
@@ -111,6 +118,10 @@ public class SecurityConfig {
       }
       case REFRESH -> {
         byte[] keyBytes = Base64.from(jwtKeyRefresh).decode();
+        return new SecretKeySpec(keyBytes, 0, keyBytes.length, MacAlgorithm.HS512.getName());
+      }
+      case RESET -> {
+        byte[] keyBytes = Base64.from(jwtKeyReset).decode();
         return new SecretKeySpec(keyBytes, 0, keyBytes.length, MacAlgorithm.HS512.getName());
       }
       default -> throw new InvalidTokenException("Invalid token type");

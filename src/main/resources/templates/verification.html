@@ -9,11 +9,11 @@
 <div style="max-width: 600px; margin: auto; background-color: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
   <h2 style="color: #333;">Chào <span th:text="${fullName}"></span>,</h2>
   <p>Cảm ơn bạn đã đăng ký tài khoản tại <strong>Website của chúng tôi</strong>.</p>
-  <p>Kích vào link để xác thực tài khoản của bạn:</p>
+  <p>Để xác minh địa chỉ email của bạn, vui lòng sử dụng Mật khẩu dùng một lần (OTP) sau:</p>
   <div style="font-size: 24px; font-weight: bold; color: #2c3e50; margin: 20px 0;">
-    <a th:href="${link}" th:text="${link}"></a>
+    <span th:text="${token}"></span>
   </div>
-  <p>Nếu bạn không yêu xác thực, vui lòng bỏ qua email này.</p>
+  <p>Không chia sẻ OTP này với bất kỳ ai. Nếu bạn không yêu xác thực, vui lòng bỏ qua email này.</p>
   <br>
   <p>Trân trọng,<br><strong>Đội ngũ hỗ trợ</strong></p>
 </div>

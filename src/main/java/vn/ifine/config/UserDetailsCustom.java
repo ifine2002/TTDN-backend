@@ -1,4 +1,4 @@
-package vn.ifine.configuration;
+package vn.ifine.config;
 
 import java.util.Collections;
 import org.springframework.http.HttpStatus;

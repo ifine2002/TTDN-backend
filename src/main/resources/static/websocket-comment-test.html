@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Comment Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+        }
+        .panel {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            flex: 1;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #comments {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 10px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            padding: 10px;
+        }
+        .comment {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .comment-author {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .comment-time {
+            font-size: 0.8em;
+            color: #666;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>WebSocket Comment Test</h1>
+    
+    <div class="container">
+        <div class="panel" id="authPanel">
+            <h2>Authentication</h2>
+            <div id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" required>
+                </div>
+                <button id="loginBtn">Login</button>
+                <div id="authStatus" class="status"></div>
+            </div>
+            <div id="userInfo" class="hidden">
+                <h3>Logged in as <span id="userEmail"></span></h3>
+                <button id="logoutBtn">Logout</button>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>WebSocket Connection</h2>
+            <div class="form-group">
+                <label for="bookId">Book ID:</label>
+                <input type="number" id="bookId" value="1" min="1">
+            </div>
+            <button id="connectBtn" disabled>Connect</button>
+            <button id="disconnectBtn" disabled>Disconnect</button>
+            <div id="connectionStatus" class="status"></div>
+            
+            <div id="commentForm" class="hidden">
+                <h2>Send Comment</h2>
+                <div class="form-group">
+                    <label for="comment">Comment:</label>
+                    <textarea id="comment" rows="4" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="stars">Rating (optional):</label>
+                    <input type="number" id="stars" min="1" max="5">
+                </div>
+                <button id="sendBtn">Send Comment</button>
+            </div>
+            
+            <h2>Comments</h2>
+            <div id="comments"></div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let stompClient = null;
+        let accessToken = null;
+        let currentUser = null;
+        let bookId = 1;
+
+        // DOM Elements
+        const loginBtn = document.getElementById('loginBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const sendBtn = document.getElementById('sendBtn');
+        const authStatus = document.getElementById('authStatus');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const loginForm = document.getElementById('loginForm');
+        const userInfo = document.getElementById('userInfo');
+        const userEmail = document.getElementById('userEmail');
+        const commentForm = document.getElementById('commentForm');
+        const commentsContainer = document.getElementById('comments');
+        const bookIdInput = document.getElementById('bookId');
+
+        // Event listeners
+        loginBtn.addEventListener('click', login);
+        logoutBtn.addEventListener('click', logout);
+        connectBtn.addEventListener('click', connect);
+        disconnectBtn.addEventListener('click', disconnect);
+        sendBtn.addEventListener('click', sendComment);
+        bookIdInput.addEventListener('change', () => {
+            bookId = bookIdInput.value;
+            if (stompClient !== null && stompClient.connected) {
+                disconnect();
+                connect();
+            }
+        });
+
+        // Authentication Functions
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            if (!email || !password) {
+                showStatus(authStatus, 'Please enter both email and password', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password }),
+                    credentials: 'include' // Important for cookies
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.message || 'Login failed');
+                }
+                
+                accessToken = data.data.access_token;
+                currentUser = data.data.user;
+                
+                // Update UI
+                showStatus(authStatus, 'Login successful', 'success');
+                loginForm.classList.add('hidden');
+                userInfo.classList.remove('hidden');
+                userEmail.textContent = currentUser.email;
+                connectBtn.disabled = false;
+                
+                console.log('Login successful', data);
+            } catch (error) {
+                showStatus(authStatus, error.message || 'Login failed', 'error');
+                console.error('Login error:', error);
+            }
+        }
+
+        function logout() {
+            if (stompClient && stompClient.connected) {
+                disconnect();
+            }
+            
+            accessToken = null;
+            currentUser = null;
+            
+            // Update UI
+            loginForm.classList.remove('hidden');
+            userInfo.classList.add('hidden');
+            connectBtn.disabled = true;
+            commentForm.classList.add('hidden');
+            
+            showStatus(authStatus, '', '');
+        }
+
+        // WebSocket Functions
+        function connect() {
+            if (!accessToken) {
+                showStatus(connectionStatus, 'Vui lòng đăng nhập trước', 'error');
+                return;
+            }
+            
+            bookId = document.getElementById('bookId').value;
+            if (!bookId || bookId < 1) {
+                showStatus(connectionStatus, 'Vui lòng nhập ID sách hợp lệ', 'error');
+                return;
+            }
+            
+            // Thử với URL đầy đủ
+            const socket = new SockJS('http://localhost:8080/ws');
+            stompClient = Stomp.over(socket);
+            
+            // Bật debug
+            stompClient.debug = function(str) {
+                console.log('STOMP Debug: ', str);
+            };
+            
+            // Thử cách khác để gửi token
+            const headers = {};
+            headers['Authorization'] = 'Bearer ' + accessToken;
+            
+            stompClient.connect(headers, onConnected, onError);
+            showStatus(connectionStatus, 'Đang kết nối...', '');
+        }
+
+        function onConnected() {
+            // Subscribe to the comment topic for this book
+            stompClient.subscribe(`/topic/comments/${bookId}`, onMessageReceived);
+            
+            // Update UI
+            showStatus(connectionStatus, 'Connected to WebSocket server', 'success');
+            connectBtn.disabled = true;
+            disconnectBtn.disabled = false;
+            commentForm.classList.remove('hidden');
+            
+            // Clear comments
+            commentsContainer.innerHTML = '';
+        }
+
+        function onError(error) {
+            console.error('WebSocket error:', error);
+            showStatus(connectionStatus, 'Could not connect to WebSocket server', 'error');
+            disconnect();
+        }
+
+        function disconnect() {
+            if (stompClient) {
+                stompClient.disconnect();
+                stompClient = null;
+            }
+            
+            // Update UI
+            showStatus(connectionStatus, 'Disconnected from WebSocket server', '');
+            connectBtn.disabled = false;
+            disconnectBtn.disabled = true;
+            commentForm.classList.add('hidden');
+        }
+
+        async function sendComment() {
+            if (!stompClient || !stompClient.connected) {
+                showStatus(connectionStatus, 'Not connected to WebSocket server', 'error');
+                return;
+            }
+            
+            const commentText = document.getElementById('comment').value;
+            const stars = document.getElementById('stars').value || null;
+            
+            if (!commentText) {
+                showStatus(connectionStatus, 'Please enter a comment', 'error');
+                return;
+            }
+            
+            // Instead of sending through WebSocket, we use the REST API with JWT token
+            try {
+                const response = await fetch(`/book/review/${bookId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${accessToken}`
+                    },
+                    body: JSON.stringify({
+                        comment: commentText,
+                        stars: stars ? parseInt(stars) : null
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Failed to send comment');
+                }
+                
+                // Clear comment form
+                document.getElementById('comment').value = '';
+                document.getElementById('stars').value = '';
+                
+                showStatus(connectionStatus, 'Comment sent successfully', 'success');
+            } catch (error) {
+                showStatus(connectionStatus, error.message || 'Failed to send comment', 'error');
+                console.error('Send comment error:', error);
+            }
+        }
+
+        function onMessageReceived(message) {
+            const comment = JSON.parse(message.body);
+            
+            const commentElement = document.createElement('div');
+            commentElement.className = 'comment';
+            
+            const authorElement = document.createElement('div');
+            authorElement.className = 'comment-author';
+            authorElement.textContent = comment.email || 'Anonymous';
+            
+            const contentElement = document.createElement('div');
+            contentElement.textContent = comment.comment;
+            
+            const timeElement = document.createElement('div');
+            timeElement.className = 'comment-time';
+            timeElement.textContent = new Date(comment.createdAt).toLocaleString();
+            
+            commentElement.appendChild(authorElement);
+            commentElement.appendChild(contentElement);
+            commentElement.appendChild(timeElement);
+            
+            commentsContainer.prepend(commentElement);
+        }
+
+        // Helper Functions
+        function showStatus(element, message, type) {
+            element.textContent = message;
+            element.className = 'status';
+            if (type) {
+                element.classList.add(type);
+            }
+        }
+    </script>
+</body>
+</html> 

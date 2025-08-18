@@ -4,11 +4,13 @@ import com.turkraft.springfilter.boot.Filter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
+import java.security.Principal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -21,12 +23,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import vn.ifine.dto.request.ReqChangePassword;
 import vn.ifine.dto.request.ReqCreateUser;
+import vn.ifine.dto.request.ReqChangeInfo;
 import vn.ifine.dto.request.ReqUpdateUser;
 import vn.ifine.dto.response.ApiResponse;
 import vn.ifine.dto.response.ResultPaginationDTO;
 import vn.ifine.dto.response.UserResponse;
-import vn.ifine.model.Role;
 import vn.ifine.model.User;
 import vn.ifine.service.UserService;
 import vn.ifine.util.UserStatus;
@@ -41,13 +44,81 @@ public class UserController {
 
   private final UserService userService;
 
-  @PostMapping("/")
+  @PostMapping(value = "/", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ResponseEntity<ApiResponse<UserResponse>> create(
-      @Valid @RequestBody ReqCreateUser reqUser) {
+      @Valid ReqCreateUser reqUser) {
     log.info("Request add user, {} {}", reqUser.getEmail(), reqUser.getFullName());
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(ApiResponse.created("Create a user success",
             this.userService.createUser(reqUser)));
+  }
+
+  @GetMapping("/profile/{id}")
+  public ResponseEntity<ApiResponse<?>> getProfileUser(@PathVariable @Min(1) Long id) {
+    log.info("Request get profile user, id={}", id);
+    // check exist by id
+    return ResponseEntity.ok()
+        .body(ApiResponse.success("Get user detail success",
+            userService.getInfoUser(id)));
+  }
+
+  @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  public ResponseEntity<ApiResponse<UserResponse>> update(@PathVariable @Min(1) long id,
+      @Valid ReqUpdateUser request) {
+    log.info("Request update user, id={}", id);
+    UserResponse user = userService.update(id, request);
+    return ResponseEntity.ok()
+        .body(ApiResponse.success("Update a user success",
+            user));
+  }
+
+  @PutMapping(value = "/change-info", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  public ResponseEntity<ApiResponse<UserResponse>> changeInfoForUser(Principal principal,
+      @Valid ReqChangeInfo request) {
+    log.info("Request change info user, emailUser={}", principal.getName());
+    UserResponse user = userService.changeInfo(principal.getName(), request);
+    return ResponseEntity.ok()
+        .body(ApiResponse.success("Change info user success",
+            user));
+  }
+
+  // Remove
+  @DeleteMapping("/{id}")
+  public ResponseEntity<ApiResponse<Void>> remove(@PathVariable("id") @Min(1) long id) {
+    log.info("Request remove user, id={}", id);
+    // check exist by id
+    User user = this.userService.getById(id);
+
+    this.userService.remove(id);
+    return ResponseEntity.ok().body(ApiResponse.success("Remove a user success", null));
+  }
+
+  @GetMapping("/list")
+  public ResponseEntity<ApiResponse<ResultPaginationDTO>> getAllUser(
+      @Filter Specification<User> spec,
+      Pageable pageable) {
+    return ResponseEntity.ok().body(
+        ApiResponse.success("Fetch all user success",
+            this.userService.getAll(spec, pageable)));
+  }
+
+  // Change password
+  @PatchMapping("/change-password")
+  public ResponseEntity<ApiResponse<Void>> changePassword(Principal principal,
+      @RequestBody @Valid ReqChangePassword request) {
+    log.info("Request change user password, {} {}", request.getOldPassword(), request.getNewPassword());
+    userService.changePassword(principal.getName(), request);
+    return ResponseEntity.status(HttpStatus.OK)
+        .body(ApiResponse.success("Change user password success",
+            null));
+  }
+
+  @GetMapping("/search")
+  public ResponseEntity<ApiResponse<?>> searchPage(@RequestParam String keyword, Pageable pageable) {
+    log.info("Request search user in search page, keyword={}", keyword);
+    return ResponseEntity.ok()
+        .body(ApiResponse.success("Search user success",
+            userService.searchUser(pageable, keyword)));
   }
 
   @GetMapping("/{id}")
@@ -59,78 +130,5 @@ public class UserController {
     return ResponseEntity.ok()
         .body(ApiResponse.success("Fetch a user success",
             resUser));
-  }
-
-  @PutMapping("/{id}")
-  public ResponseEntity<ApiResponse<UserResponse>> update(@PathVariable @Min(1) long id,
-      @Valid @RequestBody ReqUpdateUser reqUser) {
-    log.info("Request update user, id={}", id);
-    UserResponse user = userService.update(id, reqUser);
-    return ResponseEntity.ok()
-        .body(ApiResponse.success("Update a user success",
-            user));
-  }
-
-  // Remove
-  @DeleteMapping("/{id}")
-  public ResponseEntity<ApiResponse<Void>> remove(@PathVariable("id") long id) {
-    log.info("Request remove user, id={}", id);
-    // check exist by id
-    User user = this.userService.getById(id);
-
-    this.userService.remove(id);
-    return ResponseEntity.ok().body(ApiResponse.success("Remove a user success", null));
-  }
-
-  // Delete soft
-  @PatchMapping("/{id}")
-  public ResponseEntity<ApiResponse<Void>> deleteSoft(@PathVariable @Min(1) long id) {
-    log.info("Request delete-soft user, id={}", id);
-    // check exist by id
-    User user = this.userService.getById(id);
-
-    this.userService.changeStatus(id, UserStatus.DELETED);
-    return ResponseEntity.ok()
-        .body(ApiResponse.success("Delete-soft a user success", null));
-  }
-
-  // Change status: ACTIVE
-  @PatchMapping("/changeIsActive/{id}")
-  public ResponseEntity<ApiResponse<Void>> changeIsActive(@PathVariable @Min(1) long id) {
-    log.info("Request change isActive user, id={}", id);
-    // check exist by id
-    User user = this.userService.getById(id);
-
-    this.userService.changeStatus(id, UserStatus.ACTIVE);
-    return ResponseEntity.ok()
-        .body(ApiResponse.success("User is active success", null));
-  }
-
-  @GetMapping("/list")
-  public ResponseEntity<ApiResponse<ResultPaginationDTO>> getPermissions(
-      @Filter Specification<User> spec,
-      Pageable pageable) {
-    return ResponseEntity.ok().body(
-        ApiResponse.success("Fetch all user success",
-            this.userService.getAll(spec, pageable)));
-  }
-
-  @GetMapping("/active")
-  public ResponseEntity<ApiResponse<ResultPaginationDTO>> getActivePermissions(
-      @Filter Specification<User> spec,
-      Pageable pageable) {
-    return ResponseEntity.ok().body(
-        ApiResponse.success("Fetch all user active success",
-            this.userService.getAllActive(spec, pageable)));
-  }
-
-  // Update role
-  @PatchMapping("/change-role/{userId}")
-  public ResponseEntity<ApiResponse<UserResponse>> changeRole(@PathVariable @Min(1) long userId,
-      @RequestParam @Min(1) int roleId) {
-    log.info("Request update role-user, userId={}", userId);
-    return ResponseEntity.ok()
-        .body(ApiResponse.success("Update role for user success",
-            this.userService.changeRole(userId, roleId)));
   }
 }

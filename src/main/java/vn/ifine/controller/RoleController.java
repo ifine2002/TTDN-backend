@@ -20,12 +20,10 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import vn.ifine.dto.request.PermissionRequestDTO;
-import vn.ifine.dto.request.RoleRequestDTO;
+import vn.ifine.dto.request.ReqRoleDTO;
 import vn.ifine.dto.response.ApiResponse;
 import vn.ifine.dto.response.ResultPaginationDTO;
 import vn.ifine.exception.ResourceAlreadyExistsException;
-import vn.ifine.model.Permission;
 import vn.ifine.model.Role;
 import vn.ifine.service.RoleService;
 
@@ -41,7 +39,7 @@ public class RoleController {
 
   @PostMapping("/")
   public ResponseEntity<ApiResponse<Role>> create(
-      @Valid @RequestBody RoleRequestDTO role) {
+      @Valid @RequestBody ReqRoleDTO role) {
     log.info("Request add role, {}", role.getName());
     // check name
     if (this.roleService.existByName(role.getName())) {
@@ -65,7 +63,7 @@ public class RoleController {
 
   @PutMapping("/{id}")
   public ResponseEntity<ApiResponse<Role>> update(@PathVariable @Min(1) int id,
-      @Valid @RequestBody RoleRequestDTO reqRole) {
+      @Valid @RequestBody ReqRoleDTO reqRole) {
     log.info("Request update role, id={}", id);
     //check exist by id
     Role role = roleService.getById(id);
@@ -84,17 +82,6 @@ public class RoleController {
     return ResponseEntity.ok().body(ApiResponse.success("Remove a role success", null));
   }
 
-  // Delete soft
-  @PatchMapping("/{id}")
-  public ResponseEntity<ApiResponse<Role>> deleteSoft(@PathVariable @Min(1) int id) {
-    log.info("Request delete-soft role, id={}", id);
-    // check exist by id
-    Role role = roleService.getById(id);
-    this.roleService.deleteSoft(id);
-    return ResponseEntity.ok()
-        .body(ApiResponse.success("Delete-soft a role success", null));
-  }
-
   @GetMapping("/list")
   public ResponseEntity<ApiResponse<ResultPaginationDTO>> getPermissions(
       @Filter Specification<Role> spec,
@@ -102,25 +89,5 @@ public class RoleController {
     return ResponseEntity.ok().body(
         ApiResponse.success("Fetch all role success",
             this.roleService.getRoles(spec, pageable)));
-  }
-
-  // Change isActive
-  @PatchMapping("/change-active/{id}")
-  public ResponseEntity<ApiResponse<Role>> changeIsActive(@PathVariable @Min(1) int id) {
-    log.info("Request change isActive role, id={}", id);
-    // check exist by id
-    Role role = roleService.getById(id);
-    this.roleService.changeIsActive(id);
-    return ResponseEntity.ok()
-        .body(ApiResponse.success("Change is active a role success", null));
-  }
-
-  @GetMapping("/active")
-  public ResponseEntity<ApiResponse<ResultPaginationDTO>> getActivePermissions(
-      @Filter Specification<Role> spec,
-      Pageable pageable) {
-    return ResponseEntity.ok().body(
-        ApiResponse.success("Fetch all active role success",
-            this.roleService.getActiveRoles(spec, pageable)));
   }
 }

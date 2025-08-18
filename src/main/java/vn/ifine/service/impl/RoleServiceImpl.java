@@ -7,7 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
-import vn.ifine.dto.request.RoleRequestDTO;
+import vn.ifine.dto.request.ReqRoleDTO;
 import vn.ifine.dto.response.ResultPaginationDTO;
 import vn.ifine.exception.ResourceNotFoundException;
 import vn.ifine.model.Permission;
@@ -31,7 +31,7 @@ public class RoleServiceImpl implements RoleService {
   }
 
   @Override
-  public Role create(RoleRequestDTO role) {
+  public Role create(ReqRoleDTO role) {
     Role roleCurrent = Role.builder()
         .name(role.getName())
         .description(role.getDescription())
@@ -54,11 +54,11 @@ public class RoleServiceImpl implements RoleService {
   }
 
   @Override
-  public Role update(int id, RoleRequestDTO role) {
+  public Role update(int id, ReqRoleDTO role) {
     Role dbRole = this.getById(id);
     dbRole.setName(role.getName());
     dbRole.setDescription(role.getDescription());
-
+    dbRole.setIsActive(role.isActive());
     // check permission
     if (role.getPermissions() != null && !role.getPermissions().isEmpty()) {
       List<Long> reqPermisssions = role.getPermissions().stream().map(x -> x.getId())
@@ -73,15 +73,6 @@ public class RoleServiceImpl implements RoleService {
   }
 
   @Override
-  public void deleteSoft(int id) {
-    Role role = this.getById(id);
-    role.setIsActive(false);
-    // update
-    role = roleRepository.save(role);
-    log.info("Role has delete-soft successfully, roleId={}", role.getId());
-  }
-
-  @Override
   public void remove(int id) {
     // delete role inside user
     Role role = this.getById(id);
@@ -91,36 +82,8 @@ public class RoleServiceImpl implements RoleService {
   }
 
   @Override
-  public void changeIsActive(int id) {
-    Role role = this.getById(id);
-    role.setIsActive(true);
-
-    // update
-    role = roleRepository.save(role);
-    log.info("Role has change isActive successfully, roleId={}",
-        role.getId());
-  }
-
-  @Override
   public ResultPaginationDTO getRoles(Specification<Role> spec, Pageable pageable) {
     Page<Role> pageRole = roleRepository.findAll(spec, pageable);
-    ResultPaginationDTO rs = new ResultPaginationDTO();
-
-    rs.setPage(pageable.getPageNumber() + 1);
-    rs.setPageSize(pageable.getPageSize());
-    rs.setTotalPages(pageRole.getTotalPages());
-    rs.setTotalElements(pageRole.getTotalElements());
-    rs.setResult(pageRole.getContent());
-
-    return rs;
-  }
-
-  @Override
-  public ResultPaginationDTO getActiveRoles(Specification<Role> spec, Pageable pageable) {
-    // Kết hợp điều kiện isActive với các điều kiện khác
-    Specification<Role> activeSpec = GenericSpecification.withFilter(spec);
-
-    Page<Role> pageRole= roleRepository.findAll(activeSpec, pageable);
     ResultPaginationDTO rs = new ResultPaginationDTO();
 
     rs.setPage(pageable.getPageNumber() + 1);

@@ -10,5 +10,6 @@ public class ResUserAccount {
   private long id;
   private String email;
   private String fullName;
+  private String image;
   private Role role;
 }

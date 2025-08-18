@@ -1,6 +1,7 @@
 package vn.ifine.service.impl;
 
 import java.time.LocalDateTime;
+import java.util.Random;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,14 +15,18 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import vn.ifine.dto.request.ReqLoginDTO;
 import vn.ifine.dto.request.ReqRegisterDTO;
+import vn.ifine.dto.request.ReqResetPassword;
 import vn.ifine.dto.response.ResLoginDTO;
 import vn.ifine.dto.response.ResLoginDTO.UserInsideToken;
 import vn.ifine.dto.response.ResLoginDTO.UserLogin;
 import vn.ifine.dto.response.ResUserAccount;
 import vn.ifine.exception.CustomAuthenticationException;
+import vn.ifine.exception.CustomException;
 import vn.ifine.exception.InvalidTokenException;
+import vn.ifine.model.Role;
 import vn.ifine.model.User;
 import vn.ifine.model.VerificationToken;
+import vn.ifine.repository.RoleRepository;
 import vn.ifine.repository.UserRepository;
 import vn.ifine.repository.VerificationTokenRepository;
 import vn.ifine.service.AuthService;
@@ -35,6 +40,8 @@ import vn.ifine.util.UserStatus;
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
+
+
   private final UserService userService;
   private final AuthenticationManagerBuilder authenticationManagerBuilder;
   private final JwtService jwtService;
@@ -42,6 +49,7 @@ public class AuthServiceImpl implements AuthService {
   private final UserRepository userRepository;
   private final VerificationTokenRepository tokenRepository;
   private final MailService mailService;
+  private final RoleRepository roleRepository;
 
   @Override
   public ResLoginDTO login(ReqLoginDTO loginDTO) {
@@ -69,6 +77,7 @@ public class AuthServiceImpl implements AuthService {
           userDB.getId(),
           userDB.getEmail(),
           userDB.getFullName(),
+          userDB.getImage(),
           userDB.getRole());
       res.setUser(userLogin);
     }
@@ -99,6 +108,7 @@ public class AuthServiceImpl implements AuthService {
           currentUserDB.getId(),
           currentUserDB.getEmail(),
           currentUserDB.getFullName(),
+          currentUserDB.getImage(),
           currentUserDB.getRole());
       res.setUser(userLogin);
     }
@@ -114,30 +124,41 @@ public class AuthServiceImpl implements AuthService {
     boolean existUser = userService.isEmailExist(registerDTO.getEmail());
     if (existUser) {
       User user = userService.getUserByEmail(registerDTO.getEmail());
+      user.setFullName(registerDTO.getFullName());
+      user.setPassword(passwordEncoder.encode(registerDTO.getPassword()));
+      userRepository.save(user);
       if (user.getStatus() != UserStatus.NONE) {
         throw new CustomAuthenticationException("This email has already been used",
             HttpStatus.BAD_REQUEST);
       }
-      createAndSendToken(user);
+      this.createAndSendToken(user);
       return;
     }
+
+    if (!registerDTO.getPassword().equals(registerDTO.getConfirmPassword())){
+      throw new CustomException("Password and confirm password do not match");
+    }
+
+    Role roleUser = roleRepository.findByName("USER");
 
     User user = User.builder()
         .email(registerDTO.getEmail())
         .password(passwordEncoder.encode(registerDTO.getPassword()))
         .fullName(registerDTO.getFullName())
+        .role(roleUser)
         .status(UserStatus.NONE)
         .build();
     userRepository.save(user);
     log.info("Save register user on database success, id={}", user.getId());
     // todo gửi mã
-    createAndSendToken(user);
+    this.createAndSendToken(user);
   }
 
-  private void createAndSendToken(User user) {
+  @Override
+  public void createAndSendToken(User user) {
     tokenRepository.findByUser(user).ifPresent(tokenRepository::delete);
 
-    String token = UUID.randomUUID().toString();
+    String token = String.format("%06d", new Random().nextInt(1_000_000));
     VerificationToken verificationToken = new VerificationToken();
     verificationToken.setToken(token);
     verificationToken.setUser(user);
@@ -148,8 +169,10 @@ public class AuthServiceImpl implements AuthService {
         user.getFullName(), token, null);
   }
 
-  public void verifyToken(String token) {
-    VerificationToken vt = tokenRepository.findByToken(token)
+  public void verifyToken(String email, String token) {
+    User user = userService.getUserByEmail(email);
+
+    VerificationToken vt = tokenRepository.findByTokenAndUser(token, user)
         .orElseThrow(
             () -> new CustomAuthenticationException("Token invalid", HttpStatus.BAD_REQUEST));
 
@@ -157,9 +180,9 @@ public class AuthServiceImpl implements AuthService {
       throw new CustomAuthenticationException("Token has expired", HttpStatus.BAD_REQUEST);
     }
 
-    User user = vt.getUser();
-    user.setStatus(UserStatus.ACTIVE);
-    userRepository.save(user);
+    User userDB = vt.getUser();
+    userDB.setStatus(UserStatus.ACTIVE);
+    userRepository.save(userDB);
     tokenRepository.delete(vt);
   }
 
@@ -175,9 +198,35 @@ public class AuthServiceImpl implements AuthService {
       userAccount.setId(user.getId());
       userAccount.setEmail(user.getEmail());
       userAccount.setFullName(user.getFullName());
+      userAccount.setImage(user.getImage());
       userAccount.setRole(user.getRole());
     }
     log.info("Get info account success email={}", userAccount.getEmail());
     return userAccount;
+  }
+
+  @Override
+  public void sendTokenResetPassword(String email) {
+    User user = userService.getUserByEmail(email);
+    String resetToken = jwtService.createResetToken(email);
+    mailService.sendResetTokenFromTemplateSync(user.getEmail(), "Reset password", "reset-password",
+        user.getFullName(), resetToken, null);
+  }
+
+  @Override
+  public void resetPassword(String token, ReqResetPassword request) {
+    // 1. Kiểm tra resetToken token có hợp lệ
+    Jwt decodedToken = jwtService.checkValidResetToken(token);
+    String email = decodedToken.getSubject();
+    User user = userService.getUserByEmail(email);
+
+    if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+      throw new CustomException("New password and confirm password do not match");
+    }
+
+    String encodedNewPassword = passwordEncoder.encode(request.getNewPassword());
+    user.setPassword(encodedNewPassword);
+
+    userRepository.save(user);
   }
 }

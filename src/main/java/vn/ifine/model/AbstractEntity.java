@@ -10,6 +10,7 @@ import org.springframework.data.annotation.LastModifiedBy;
 
 import java.io.Serializable;
 import java.util.Date;
+import vn.ifine.service.impl.JwtServiceImpl;
 
 
 @Getter
@@ -22,13 +23,11 @@ public abstract class AbstractEntity<T extends Serializable> implements Serializ
   @Column(name = "id")
   T id;
 
-//  @CreatedBy
-//  @Column(name = "create_by")
-//  T createBy;
-//
-//  @LastModifiedBy
-//  @Column(name = "updated_by")
-//  T updatedBy;
+  @Column(name = "created_by")
+  private String createdBy;
+
+  @Column(name = "updated_by")
+  private String updatedBy;
 
   @Column(name = "created_at")
   @CreationTimestamp
@@ -40,5 +39,19 @@ public abstract class AbstractEntity<T extends Serializable> implements Serializ
 
   @Column(name = "is_active")
   private Boolean isActive = true;
+
+  @PrePersist
+  public void handleBeforeCreate() {
+    this.createdBy = JwtServiceImpl.getCurrentUserLogin().isPresent()
+        ? JwtServiceImpl.getCurrentUserLogin().get()
+        : "";
+  }
+
+  @PreUpdate
+  public void handleBeforeUpdate() {
+    this.updatedBy = JwtServiceImpl.getCurrentUserLogin().isPresent()
+        ? JwtServiceImpl.getCurrentUserLogin().get()
+        : "";
+  }
 }
 

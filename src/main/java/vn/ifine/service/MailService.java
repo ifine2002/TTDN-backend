@@ -10,4 +10,7 @@ public interface MailService {
 
   void sendEmailFromTemplateSync(String recipients, String subject, String templateName, String fullName, String token,
       MultipartFile[] files);
+
+  void sendResetTokenFromTemplateSync(String recipients, String subject, String templateName, String fullName, String token,
+      MultipartFile[] files);
 }

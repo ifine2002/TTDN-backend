@@ -8,7 +8,7 @@ import vn.ifine.model.User;
 
 @Repository
 public interface VerificationTokenRepository extends JpaRepository<VerificationToken, Long> {
-  Optional<VerificationToken> findByToken(String token);
+  Optional<VerificationToken> findByTokenAndUser(String token, User user);
 
   Optional<VerificationToken> findByUser(User user);
 }

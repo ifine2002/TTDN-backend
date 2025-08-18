@@ -1,4 +1,4 @@
-package vn.ifine.configuration;
+package vn.ifine.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletException;

@@ -35,19 +35,28 @@ public class JwtServiceImpl implements JwtService {
   @Value("${jwt.refresh-token}")
   private String jwtKeyRefresh;
 
+  @Value("${jwt.reset-token}")
+  private String jwtKeyReset;
+
   @Value("${jwt.access-token-validity-in-seconds}")
   private long accessTokenExpiration;
 
   @Value("${jwt.refresh-token-validity-in-seconds}")
   private long refreshTokenExpiration;
 
+  @Value("${jwt.reset-token-validity-in-seconds}")
+  private long resetTokenExpiration;
+
   private final JwtEncoder accessTokenEncoder;
   private final JwtEncoder refreshTokenEncoder;
+  private final JwtEncoder resetTokenEncoder;
 
   public JwtServiceImpl(@Qualifier("accessTokenEncoder") JwtEncoder accessTokenEncoder,
-      @Qualifier("refreshTokenEncoder") JwtEncoder refreshTokenEncoder) {
+      @Qualifier("refreshTokenEncoder") JwtEncoder refreshTokenEncoder,
+      @Qualifier("resetTokenEncoder") JwtEncoder resetTokenEncoder) {
     this.accessTokenEncoder = accessTokenEncoder;
     this.refreshTokenEncoder = refreshTokenEncoder;
+    this.resetTokenEncoder = resetTokenEncoder;
   }
 
   @Override
@@ -104,6 +113,23 @@ public class JwtServiceImpl implements JwtService {
   }
 
   @Override
+  public String createResetToken(String email) {
+    Instant now = Instant.now();
+    Instant validity = now.plus(this.resetTokenExpiration, ChronoUnit.SECONDS);
+    // @formatter:off
+    JwtClaimsSet claims = JwtClaimsSet.builder()
+        .issuedAt(now)
+        .expiresAt(validity)
+        .subject(email)
+        .claim("tokenType", "reset_token")
+        .build();
+
+    JwsHeader jwsHeader = JwsHeader.with(JWT_ALGORITHM).build();
+    return this.resetTokenEncoder.encode(JwtEncoderParameters.from(jwsHeader,
+        claims)).getTokenValue();
+  }
+
+  @Override
   public Jwt checkValidRefreshToken(String token) {
     NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withSecretKey(
         getSecretKeyRefresh()).macAlgorithm(JWT_ALGORITHM).build(); // Lấy SecretKey để giải mã
@@ -115,8 +141,25 @@ public class JwtServiceImpl implements JwtService {
     }
   }
 
+  @Override
+  public Jwt checkValidResetToken(String token) {
+    NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withSecretKey(
+        getSecretKeyReset()).macAlgorithm(JWT_ALGORITHM).build(); // Lấy SecretKey để giải mã
+    try {
+      return jwtDecoder.decode(token);
+    } catch (Exception e) {
+      System.out.println(">>> Refresh Token error: " + e.getMessage());
+      throw e;
+    }
+  }
+
   private SecretKey getSecretKeyRefresh() {
     byte[] keyBytes = Base64.from(jwtKeyRefresh).decode();
+    return new SecretKeySpec(keyBytes, 0, keyBytes.length, JWT_ALGORITHM.getName());
+  }
+
+  private SecretKey getSecretKeyReset() {
+    byte[] keyBytes = Base64.from(jwtKeyReset).decode();
     return new SecretKeySpec(keyBytes, 0, keyBytes.length, JWT_ALGORITHM.getName());
   }
 
