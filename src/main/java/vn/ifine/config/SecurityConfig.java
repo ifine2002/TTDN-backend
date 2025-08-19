@@ -48,7 +48,7 @@ public class SecurityConfig {
     String[] whiteList = { "/auth/**", "/v3/api-docs/**",
         "/swagger-ui/**", "/ws/**", "/*.html", "/book/home-page", "/book/detail-book/**", "/book/explore",
         "/book/search", "/user/search", "/user/profile/**", "/follow/list-following", "/swagger-ui.html",
-        "/book/list-book-user", "/favorite-book/books-of-user/**"
+        "/book/list-book-user", "/favorite-book/books-of-user/**", "/category/list-upload"
     };
     http
         .csrf(c -> c.disable())
