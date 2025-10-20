@@ -123,10 +123,10 @@ public class GlobalException {
     return ResponseEntity.status(BAD_REQUEST).body(errorResponse);
   }
 
-  @ExceptionHandler(value = {MethodArgumentTypeMismatchException.class})
+  @ExceptionHandler(value = {HttpMessageNotReadableException.class, IllegalArgumentException.class, MethodArgumentTypeMismatchException.class})
   @ResponseStatus(BAD_REQUEST)
-  public ResponseEntity<ErrorResponse<Object>> handleMethodArgumentTypeMismatchException(
-      MethodArgumentTypeMismatchException ex, WebRequest request) {
+  public ResponseEntity<ErrorResponse<Object>> handleBadInput(
+      Exception  ex, WebRequest request) {
     log.error("Exception caught: ", ex);  // Log toàn bộ stack trace
     ErrorResponse<Object> errorResponse = ErrorResponse.builder()
         .timestamp(new Date())
@@ -154,23 +154,6 @@ public class GlobalException {
         .build();
     return ResponseEntity.status(BAD_REQUEST).body(errorResponse);
   }
-
-  @ExceptionHandler(value = {HttpMessageNotReadableException.class, IllegalArgumentException.class})
-  @ResponseStatus(BAD_REQUEST)
-  public ResponseEntity<ErrorResponse<Object>> handleEnumValidationException(
-      HttpMessageNotReadableException ex, WebRequest request) {
-    log.error("Exception caught: ", ex);  // Log toàn bộ stack trace
-    ErrorResponse<Object> errorResponse = ErrorResponse.builder()
-        .timestamp(new Date())
-        .status(BAD_REQUEST.value())
-        .error(BAD_REQUEST.getReasonPhrase())
-        .message(ex.getMessage())
-        .path(request.getDescription(false).replace("uri=", ""))
-        .build();
-
-    return ResponseEntity.status(BAD_REQUEST).body(errorResponse);
-  }
-
 
   @ExceptionHandler(Exception.class)
   @ResponseStatus(INTERNAL_SERVER_ERROR)
@@ -204,6 +187,4 @@ public class GlobalException {
 
     return ResponseEntity.status(FORBIDDEN).body(errorResponse);
   }
-
-
 }

@@ -2,6 +2,7 @@ package vn.ifine.config;
 
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import com.nimbusds.jose.util.Base64;
+import java.time.Duration;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
@@ -13,14 +14,19 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtTimestampValidator;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import vn.ifine.exception.InvalidTokenException;
 import vn.ifine.util.TokenType;
 
@@ -44,7 +50,7 @@ public class SecurityConfig {
 
   @Bean
   public SecurityFilterChain filterChain(HttpSecurity http,
-      CustomAuthenticationEntryPoint customAuthenticationEntryPoint) throws Exception {
+      CustomAuthenticationEntryPoint customAuthenticationEntryPoint, JwtBlacklistFilter jwtBlacklistFilter, EndpointExistsFilter endpointExistsFilter) throws Exception {
     String[] whiteList = { "/auth/**", "/v3/api-docs/**",
         "/swagger-ui/**", "/ws/**", "/*.html", "/book/home-page", "/book/detail-book/**", "/book/explore",
         "/book/search", "/user/search", "/user/profile/**", "/follow/list-following", "/swagger-ui.html",
@@ -53,6 +59,8 @@ public class SecurityConfig {
     http
         .csrf(c -> c.disable())
         .cors(Customizer.withDefaults())
+        .addFilterBefore(endpointExistsFilter, UsernamePasswordAuthenticationFilter.class)
+        .addFilterBefore(jwtBlacklistFilter, UsernamePasswordAuthenticationFilter.class)
         .authorizeHttpRequests(
             authorize -> authorize
                 .requestMatchers(whiteList).permitAll()
@@ -83,8 +91,19 @@ public class SecurityConfig {
   @Bean
   public JwtDecoder jwtDecoder() {
     NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withSecretKey(
-        geKey(TokenType.ACCESS)) // Lấy SecretKey để giải mã
-        .macAlgorithm(MacAlgorithm.HS512).build(); // Thuật toán mã hóa (HS512)
+            geKey(TokenType.ACCESS))
+        .macAlgorithm(MacAlgorithm.HS512)
+        .build();
+
+    // Thêm timestamp validator với clock skew = 0
+    JwtTimestampValidator timestampValidator = new JwtTimestampValidator(Duration.ZERO);
+
+    OAuth2TokenValidator<Jwt> validator = new DelegatingOAuth2TokenValidator<>(
+        timestampValidator
+    );
+
+    jwtDecoder.setJwtValidator(validator);
+
     return token -> {
       try {
         return jwtDecoder.decode(token);

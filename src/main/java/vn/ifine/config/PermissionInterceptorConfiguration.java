@@ -1,19 +1,19 @@
 package vn.ifine.config;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import vn.ifine.repository.PermissionRepository;
 import vn.ifine.service.UserService;
 
 @Configuration
+@RequiredArgsConstructor
 public class PermissionInterceptorConfiguration implements WebMvcConfigurer {
 
   private final UserService userService;
 
-  public PermissionInterceptorConfiguration(UserService userService) {
-    this.userService = userService;
-  }
 
   @Bean
   PermissionInterceptor getPermissionInterceptor() {

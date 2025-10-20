@@ -1,8 +1,9 @@
 package vn.ifine.service.impl;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.Random;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -13,6 +14,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
+import vn.ifine.dto.JwtInfo;
 import vn.ifine.dto.request.ReqLoginDTO;
 import vn.ifine.dto.request.ReqRegisterDTO;
 import vn.ifine.dto.request.ReqResetPassword;
@@ -23,9 +25,11 @@ import vn.ifine.dto.response.ResUserAccount;
 import vn.ifine.exception.CustomAuthenticationException;
 import vn.ifine.exception.CustomException;
 import vn.ifine.exception.InvalidTokenException;
+import vn.ifine.model.RedisToken;
 import vn.ifine.model.Role;
 import vn.ifine.model.User;
 import vn.ifine.model.VerificationToken;
+import vn.ifine.repository.RedisTokenRepository;
 import vn.ifine.repository.RoleRepository;
 import vn.ifine.repository.UserRepository;
 import vn.ifine.repository.VerificationTokenRepository;
@@ -40,8 +44,6 @@ import vn.ifine.util.UserStatus;
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
-
-
   private final UserService userService;
   private final AuthenticationManagerBuilder authenticationManagerBuilder;
   private final JwtService jwtService;
@@ -50,6 +52,7 @@ public class AuthServiceImpl implements AuthService {
   private final VerificationTokenRepository tokenRepository;
   private final MailService mailService;
   private final RoleRepository roleRepository;
+  private final RedisTokenRepository redisTokenRepository;
 
   @Override
   public ResLoginDTO login(ReqLoginDTO loginDTO) {
@@ -228,5 +231,23 @@ public class AuthServiceImpl implements AuthService {
     user.setPassword(encodedNewPassword);
 
     userRepository.save(user);
+  }
+
+  @Override
+  public void logout(String token) {
+    JwtInfo jwtInfo = jwtService.parseToken(token);
+    String jwtId = jwtInfo.getJwtId();
+    Date expiredTime = jwtInfo.getExpiredTime();
+    Date now = new Date();
+    if(expiredTime.before(new Date())){
+      return;
+    }
+
+    RedisToken redisToken = RedisToken.builder()
+        .jwtId(jwtId)
+        .expiredTime(expiredTime.getTime() - now.getTime())
+        .build();
+
+    redisTokenRepository.save(redisToken);
   }
 }

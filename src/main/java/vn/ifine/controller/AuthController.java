@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -65,7 +66,6 @@ public class AuthController {
         .path("/")
         .maxAge(refreshTokenExpiration)
         .build();
-
     return ResponseEntity.ok()
         .header(HttpHeaders.SET_COOKIE, resCookies.toString())
         .body(ApiResponse.success("Login successfully", res));
@@ -143,7 +143,7 @@ public class AuthController {
   }
 
   @PostMapping("/logout")
-  public ResponseEntity<ApiResponse<Void>> logout() {
+  public ResponseEntity<ApiResponse<Void>> logout(@RequestHeader("Authorization") String authHeader) {
     String email = JwtServiceImpl.getCurrentUserLogin().isPresent() ? JwtServiceImpl.getCurrentUserLogin().get() : "";
     if (email.equals("")) {
       throw new InvalidTokenException("Access Token invalid");
@@ -160,13 +160,8 @@ public class AuthController {
         .path("/")
         .maxAge(0)
         .build();
-    // Clear SecurityContext
-    SecurityContextHolder.clearContext();
-//
-//    // Create a new empty authentication
-    SecurityContextHolder.getContext().setAuthentication(null);
-//
-
+    String token = authHeader.replace("Bearer ", "");
+    authService.logout(token);
     return ResponseEntity.ok()
         .header(HttpHeaders.SET_COOKIE, deleteSpringCookie.toString())
         .body(ApiResponse.success("Logout User", null));

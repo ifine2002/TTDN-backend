@@ -2,6 +2,7 @@ package vn.ifine.service;
 
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
+import vn.ifine.dto.JwtInfo;
 import vn.ifine.dto.response.ResLoginDTO;
 
 @Service
@@ -16,4 +17,6 @@ public interface JwtService {
   Jwt checkValidRefreshToken(String token);
 
   Jwt checkValidResetToken(String token);
+
+  JwtInfo parseToken(String token);
 }

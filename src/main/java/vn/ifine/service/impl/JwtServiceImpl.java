@@ -1,11 +1,15 @@
 package vn.ifine.service.impl;
 
 import com.nimbusds.jose.util.Base64;
+import com.nimbusds.jwt.SignedJWT;
+import java.text.ParseException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +27,7 @@ import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.stereotype.Service;
+import vn.ifine.dto.JwtInfo;
 import vn.ifine.dto.response.ResLoginDTO;
 import vn.ifine.service.JwtService;
 
@@ -80,6 +85,7 @@ public class JwtServiceImpl implements JwtService {
         .issuedAt(now)
         .expiresAt(validity)
         .subject(email)
+        .id(UUID.randomUUID().toString()) //jwtId
         .claim("permission", listAuthority)
         .claim("user", userToken)
         .build();
@@ -150,6 +156,23 @@ public class JwtServiceImpl implements JwtService {
     } catch (Exception e) {
       System.out.println(">>> Refresh Token error: " + e.getMessage());
       throw e;
+    }
+  }
+
+  @Override public JwtInfo parseToken(String token) {
+    try {
+      // Parse token
+      SignedJWT signedJWT = SignedJWT.parse(token);
+      String jwtId = signedJWT.getJWTClaimsSet().getJWTID();
+      Date expiredTime = signedJWT.getJWTClaimsSet().getExpirationTime();
+
+      return JwtInfo.builder()
+          .jwtId(jwtId)
+          .expiredTime(expiredTime)
+          .build();
+    } catch (ParseException e) {
+      log.error("Failed to parse token: {}", e.getMessage(), e);
+      return null;
     }
   }
 

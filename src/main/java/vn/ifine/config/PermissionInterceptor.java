@@ -12,6 +12,8 @@ import vn.ifine.exception.PermissionException;
 import vn.ifine.model.Permission;
 import vn.ifine.model.Role;
 import vn.ifine.model.User;
+import vn.ifine.repository.PermissionRepository;
+import vn.ifine.service.PermissionService;
 import vn.ifine.service.UserService;
 import vn.ifine.service.impl.JwtServiceImpl;
 
