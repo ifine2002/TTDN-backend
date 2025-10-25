@@ -29,6 +29,13 @@ public class EndpointExistsFilter extends OncePerRequestFilter {
   }
 
   @Override
+  protected boolean shouldNotFilter(HttpServletRequest request) {
+    String path = request.getRequestURI();
+    // Loại trừ các đường dẫn WebSocket và các static resources
+    return path.startsWith("/ws");
+  }
+
+  @Override
   protected void doFilterInternal(HttpServletRequest request,
       HttpServletResponse response,
       FilterChain filterChain) throws ServletException, IOException {

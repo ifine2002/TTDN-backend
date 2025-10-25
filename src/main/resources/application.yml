@@ -46,7 +46,7 @@ jwt:
   access-token: TRrx3ZoD9xgevlM73MU8/ay9VO+8RJ7NjvFh8Ab0xoTsKzuPYwCOKDZugGYsVxroYRfP94DH6jBxBhFyBPaQQQ==
   refresh-token: TRrx3ZoD9xgevlM73MU8/yy9VO+8RJ7NjvFh5Ab0xoTsKuuPYwCOKDZugGYsVeroYRfP94DH6jBxBhFyBPaQQQ==
   reset-token: TRrx3ZoD9xgevlM73MU8/yy9VO+8RJ7NovFh5Ab0xoTsKuuPYwCOKDZugGYsVeyoYRfP94DH6jBxBhFyBPaQQQ==
-  access-token-validity-in-seconds: 60
+  access-token-validity-in-seconds: 2700
   refresh-token-validity-in-seconds: 604800
   reset-token-validity-in-seconds: 300
 minio:
