@@ -7,11 +7,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
-import vn.ifine.dto.response.ResBook;
 import vn.ifine.dto.response.ResBookSearch;
 import vn.ifine.dto.response.ResFavoriteBook;
 import vn.ifine.dto.response.ResultPaginationDTO;
-import vn.ifine.dto.response.UserResponse;
 import vn.ifine.exception.ResourceNotFoundException;
 import vn.ifine.model.Book;
 import vn.ifine.model.FavoriteBook;
@@ -21,14 +19,11 @@ import vn.ifine.repository.FavoriteBookRepository;
 import vn.ifine.service.BookService;
 import vn.ifine.service.FavoriteBookService;
 import vn.ifine.service.UserService;
-import vn.ifine.specification.UserSpecification;
 
 @Service
 @Slf4j(topic = "FAVORITE-BOOK-SERVICE-IMPL")
 @RequiredArgsConstructor
 public class FavoriteBookServiceImpl implements FavoriteBookService {
-
-
 
   private final FavoriteBookRepository favoriteBookRepository;
   private final BookRepository bookRepository;
@@ -87,17 +82,6 @@ public class FavoriteBookServiceImpl implements FavoriteBookService {
     return rs;
   }
 
-  private ResFavoriteBook convertToRes(FavoriteBook favoriteBook) {
-    ResFavoriteBook res = ResFavoriteBook.builder()
-        .id(favoriteBook.getId())
-        .userId(favoriteBook.getUser().getId())
-        .bookId(favoriteBook.getBook().getId())
-        .createdAt(favoriteBook.getCreatedAt())
-        .createdBy(favoriteBook.getCreatedBy())
-        .build();
-    return res;
-  }
-
   @Override
   public ResultPaginationDTO getListFavoriteOfUser(String email, Specification<FavoriteBook> spec,
       Pageable pageable) {
@@ -122,5 +106,16 @@ public class FavoriteBookServiceImpl implements FavoriteBookService {
     rs.setTotalElements(page.getTotalElements());
     rs.setResult(content);
     return rs;
+  }
+
+  private ResFavoriteBook convertToRes(FavoriteBook favoriteBook) {
+    ResFavoriteBook res = ResFavoriteBook.builder()
+        .id(favoriteBook.getId())
+        .userId(favoriteBook.getUser().getId())
+        .bookId(favoriteBook.getBook().getId())
+        .createdAt(favoriteBook.getCreatedAt())
+        .createdBy(favoriteBook.getCreatedBy())
+        .build();
+    return res;
   }
 }

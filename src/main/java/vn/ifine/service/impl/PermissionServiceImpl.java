@@ -1,10 +1,5 @@
 package vn.ifine.service.impl;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -15,11 +10,9 @@ import vn.ifine.dto.request.ReqPermissionDTO;
 import vn.ifine.dto.response.ResultPaginationDTO;
 import vn.ifine.exception.ResourceNotFoundException;
 import vn.ifine.model.Permission;
-import vn.ifine.model.Role;
 import vn.ifine.repository.PermissionRepository;
 import vn.ifine.repository.RoleRepository;
 import vn.ifine.service.PermissionService;
-import vn.ifine.specification.GenericSpecification;
 
 @Service
 @Slf4j(topic = "PERMISSION-SERVICE-IMPL")

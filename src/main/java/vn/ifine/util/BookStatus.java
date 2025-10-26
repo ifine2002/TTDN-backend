@@ -1,8 +1,5 @@
 package vn.ifine.util;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 public enum BookStatus {
 //  @JsonProperty("active")
   ACTIVE,

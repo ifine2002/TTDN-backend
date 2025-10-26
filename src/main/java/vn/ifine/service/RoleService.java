@@ -9,6 +9,7 @@ import vn.ifine.model.Role;
 
 @Service
 public interface RoleService {
+
   boolean existByName(String name);
 
   Role create(ReqRoleDTO role);

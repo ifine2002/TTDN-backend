@@ -15,7 +15,6 @@ import vn.ifine.model.Role;
 import vn.ifine.repository.PermissionRepository;
 import vn.ifine.repository.RoleRepository;
 import vn.ifine.service.RoleService;
-import vn.ifine.specification.GenericSpecification;
 
 @Service
 @Slf4j(topic = "ROLE-SERVICE-IMPL")

@@ -10,7 +10,6 @@ import vn.ifine.dto.response.ResComment;
 import vn.ifine.dto.response.ResRatingDTO;
 import vn.ifine.dto.response.ResultPaginationDTO;
 import vn.ifine.model.Comment;
-import vn.ifine.model.Permission;
 import vn.ifine.model.Rating;
 
 @Service
@@ -37,5 +36,4 @@ public interface ReviewService {
   void updateReview(Long commentId, Long ratingId, ReviewRequestDto request, String email);
 
   void deleteReview(Long commentId, Long ratingId, String email);
-
 }

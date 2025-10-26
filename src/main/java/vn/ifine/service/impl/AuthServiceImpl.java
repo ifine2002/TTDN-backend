@@ -1,6 +1,5 @@
 package vn.ifine.service.impl;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.Random;
@@ -172,23 +171,6 @@ public class AuthServiceImpl implements AuthService {
         user.getFullName(), token, null);
   }
 
-  public void verifyToken(String email, String token) {
-    User user = userService.getUserByEmail(email);
-
-    VerificationToken vt = tokenRepository.findByTokenAndUser(token, user)
-        .orElseThrow(
-            () -> new CustomAuthenticationException("Token invalid", HttpStatus.BAD_REQUEST));
-
-    if (vt.getExpiryDate().isBefore(LocalDateTime.now())) {
-      throw new CustomAuthenticationException("Token has expired", HttpStatus.BAD_REQUEST);
-    }
-
-    User userDB = vt.getUser();
-    userDB.setStatus(UserStatus.ACTIVE);
-    userRepository.save(userDB);
-    tokenRepository.delete(vt);
-  }
-
   @Override
   public ResUserAccount getAccount() {
     String email =
@@ -249,5 +231,22 @@ public class AuthServiceImpl implements AuthService {
         .build();
 
     redisTokenRepository.save(redisToken);
+  }
+
+  public void verifyToken(String email, String token) {
+    User user = userService.getUserByEmail(email);
+
+    VerificationToken vt = tokenRepository.findByTokenAndUser(token, user)
+        .orElseThrow(
+            () -> new CustomAuthenticationException("Token invalid", HttpStatus.BAD_REQUEST));
+
+    if (vt.getExpiryDate().isBefore(LocalDateTime.now())) {
+      throw new CustomAuthenticationException("Token has expired", HttpStatus.BAD_REQUEST);
+    }
+
+    User userDB = vt.getUser();
+    userDB.setStatus(UserStatus.ACTIVE);
+    userRepository.save(userDB);
+    tokenRepository.delete(vt);
   }
 }

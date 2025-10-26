@@ -12,7 +12,6 @@ import vn.ifine.dto.response.ResUserFollow;
 import vn.ifine.dto.response.ResultPaginationDTO;
 import vn.ifine.exception.CustomException;
 import vn.ifine.exception.ResourceNotFoundException;
-import vn.ifine.model.FavoriteBook;
 import vn.ifine.model.Follow;
 import vn.ifine.model.User;
 import vn.ifine.repository.FollowRepository;
@@ -23,8 +22,6 @@ import vn.ifine.service.UserService;
 @Slf4j(topic = "FOLLOW-SERVICE-IMPL")
 @RequiredArgsConstructor
 public class FollowServiceImpl implements FollowService {
-
-
 
   private final FollowRepository followRepository;
   private final UserService userService;
@@ -60,20 +57,6 @@ public class FollowServiceImpl implements FollowService {
             "Not found follow with followerId = " + followerId + " and followingId = "
                 + followingId));
     followRepository.delete(follow);
-  }
-
-  private ResFollowDTO convertToResFollowDTO(Follow follow) {
-    return ResFollowDTO.builder()
-        .id(follow.getId())
-        .followerId(follow.getFollower().getId())
-        .followingId(follow.getFollowing().getId())
-        .createdAt(follow.getCreatedAt())
-        .createdBy(follow.getCreatedBy())
-        .build();
-  }
-
-  private ResUserFollow convertToResUserFollow(User user) {
-    return new ResUserFollow(user.getId(), user.getFullName(), user.getImage());
   }
 
   @Override
@@ -125,5 +108,19 @@ public class FollowServiceImpl implements FollowService {
         .toList();
     rs.setResult(listUser);
     return rs;
+  }
+
+  private ResFollowDTO convertToResFollowDTO(Follow follow) {
+    return ResFollowDTO.builder()
+        .id(follow.getId())
+        .followerId(follow.getFollower().getId())
+        .followingId(follow.getFollowing().getId())
+        .createdAt(follow.getCreatedAt())
+        .createdBy(follow.getCreatedBy())
+        .build();
+  }
+
+  private ResUserFollow convertToResUserFollow(User user) {
+    return new ResUserFollow(user.getId(), user.getFullName(), user.getImage());
   }
 }

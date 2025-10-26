@@ -13,7 +13,6 @@ import vn.ifine.dto.request.ReqCategoryDTO;
 import vn.ifine.dto.response.ResCategory;
 import vn.ifine.dto.response.ResCategoryUpload;
 import vn.ifine.dto.response.ResultPaginationDTO;
-import vn.ifine.dto.response.UserResponse;
 import vn.ifine.exception.ResourceNotFoundException;
 import vn.ifine.model.Category;
 import vn.ifine.repository.CategoryRepository;
@@ -24,8 +23,6 @@ import vn.ifine.service.FileService;
 @RequiredArgsConstructor
 @Slf4j(topic = "CATEGORY-SERVICE-IMPL")
 public class CategoryServiceImpl implements CategoryService {
-
-
 
   @Override
   public boolean isNameExist(String name) {

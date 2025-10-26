@@ -23,5 +23,4 @@ public interface PermissionService {
   ResultPaginationDTO getPermissions(Specification<Permission> spec, Pageable pageable);
 
   boolean isSameName(long permissionId, ReqPermissionDTO p);
-
 }

@@ -1,6 +1,5 @@
 package vn.ifine.service;
 
-import java.util.List;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -9,7 +8,6 @@ import vn.ifine.dto.response.ResAdminBookDTO;
 import vn.ifine.dto.response.ResBook;
 import vn.ifine.dto.response.ResBookSearch;
 import vn.ifine.dto.response.ResDetailBook;
-import vn.ifine.dto.response.ResPost;
 import vn.ifine.dto.response.ResultPaginationDTO;
 import vn.ifine.model.Book;
 

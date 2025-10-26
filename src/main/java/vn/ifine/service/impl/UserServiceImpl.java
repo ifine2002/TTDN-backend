@@ -9,10 +9,9 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
+import vn.ifine.dto.request.ReqChangeInfo;
 import vn.ifine.dto.request.ReqChangePassword;
 import vn.ifine.dto.request.ReqCreateUser;
-import vn.ifine.dto.request.ReqChangeInfo;
 import vn.ifine.dto.request.ReqUpdateUser;
 import vn.ifine.dto.response.ResInfoUser;
 import vn.ifine.dto.response.ResUserFollow;
@@ -31,7 +30,6 @@ import vn.ifine.service.FileService;
 import vn.ifine.service.RoleService;
 import vn.ifine.service.UserService;
 import vn.ifine.specification.UserSpecification;
-import vn.ifine.util.UserStatus;
 
 @Slf4j(topic = "USER-SERVICE-IMPL")
 @RequiredArgsConstructor
@@ -50,7 +48,6 @@ public class UserServiceImpl implements UserService {
         .orElseThrow(() -> new ResourceNotFoundException("User not found with id = " + id));
     return user;
   }
-
 
   // for client
   @Override
@@ -257,15 +254,6 @@ public class UserServiceImpl implements UserService {
     return rs;
   }
 
-  private ResUserSearch convertToResUserSearch(User user){
-    return ResUserSearch.builder()
-        .id(user.getId())
-        .fullName(user.getFullName())
-        .image(user.getImage())
-        .address(user.getAddress())
-        .build();
-  }
-
   @Override
   public ResultPaginationDTO searchUser(Pageable pageable, String keyword) {
     Specification<User> spec = UserSpecification.search(keyword);
@@ -284,5 +272,14 @@ public class UserServiceImpl implements UserService {
 
     rs.setResult(listUser);
     return rs;
+  }
+
+  private ResUserSearch convertToResUserSearch(User user){
+    return ResUserSearch.builder()
+        .id(user.getId())
+        .fullName(user.getFullName())
+        .image(user.getImage())
+        .address(user.getAddress())
+        .build();
   }
 }
