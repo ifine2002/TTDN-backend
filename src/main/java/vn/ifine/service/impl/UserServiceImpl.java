@@ -56,17 +56,23 @@ public class UserServiceImpl implements UserService {
   @Override
   public ResInfoUser getInfoUser(Long id) {
     User user = this.getById(id);
-    List<Follow> followers = followRepository.findByFollowingId(id);
-    List<ResUserFollow> listFollowers = followers.stream().map(x -> {
-      User follower = x.getFollower();
-      return new ResUserFollow(follower.getId(), follower.getFullName(), follower.getImage());
-    }).toList();
+    List<Follow> followers = followRepository.findByFollowingIdWithFollower(id);
+    List<ResUserFollow> listFollowers = followers.stream()
+        .map(f -> new ResUserFollow(
+            f.getFollower().getId(),
+            f.getFollower().getFullName(),
+            f.getFollower().getImage()
+        ))
+        .toList();
 
-    List<Follow> followings = followRepository.findByFollowerId(id);
-    List<ResUserFollow> listFollowings = followings.stream().map(x -> {
-      User following = x.getFollowing();
-      return new ResUserFollow(following.getId(), following.getFullName(), following.getImage());
-    }).toList();
+    List<Follow> followings = followRepository.findByFollowerIdWithFollowing(id);
+    List<ResUserFollow> listFollowings = followings.stream()
+        .map(f -> new ResUserFollow(
+            f.getFollowing().getId(),
+            f.getFollowing().getFullName(),
+            f.getFollowing().getImage()
+        ))
+        .toList();
 
     return ResInfoUser.builder()
         .id(user.getId())

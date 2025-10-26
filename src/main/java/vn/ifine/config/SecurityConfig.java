@@ -53,7 +53,7 @@ public class SecurityConfig {
       CustomAuthenticationEntryPoint customAuthenticationEntryPoint, JwtBlacklistFilter jwtBlacklistFilter, EndpointExistsFilter endpointExistsFilter) throws Exception {
     String[] whiteList = { "/auth/**", "/v3/api-docs/**",
         "/swagger-ui/**", "/ws/**", "/*.html", "/book/home-page", "/book/detail-book/**", "/book/explore",
-        "/book/search", "/user/search", "/user/profile/**", "/follow/list-following", "/swagger-ui.html",
+        "/book/search", "/user/search", "/user/profile/**", "/swagger-ui.html",
         "/book/list-book-user", "/favorite-book/books-of-user/**", "/category/list-upload"
     };
     http
