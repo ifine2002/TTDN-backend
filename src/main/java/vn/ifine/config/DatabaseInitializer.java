@@ -31,14 +31,15 @@ public class DatabaseInitializer implements CommandLineRunner {
     long countPermissions = this.permissionRepository.count();
     long countRoles = this.roleRepository.count();
 
-    if(countPermissions == 0) {
+    if (countPermissions == 0) {
       ArrayList<Permission> arr = new ArrayList<>();
 
       arr.add(new Permission("Create a permission", "/permission/", "POST", "PERMISSIONS"));
       arr.add(new Permission("Update a permission", "/permission/{id}", "PUT", "PERMISSIONS"));
       arr.add(new Permission("Delete a permission", "/permission/{id}", "DELETE", "PERMISSIONS"));
       arr.add(new Permission("Get a permission by id", "/permission/{id}", "GET", "PERMISSIONS"));
-      arr.add(new Permission("Get permissions with pagination", "/permission/list", "GET", "PERMISSIONS"));
+      arr.add(new Permission("Get permissions with pagination", "/permission/list", "GET",
+          "PERMISSIONS"));
 
       arr.add(new Permission("Create a role", "/role/", "POST", "ROLES"));
       arr.add(new Permission("Update a role", "/role/{id}", "PUT", "ROLES"));
@@ -50,29 +51,38 @@ public class DatabaseInitializer implements CommandLineRunner {
       arr.add(new Permission("Update a category", "/category/{id}", "PUT", "CATEGORIES"));
       arr.add(new Permission("Delete a category", "/category/{id}", "DELETE", "CATEGORIES"));
       arr.add(new Permission("Create a category", "/category/", "POST", "CATEGORIES"));
-      arr.add(new Permission("Get categories with pagination", "/category/list", "GET", "CATEGORIES"));
-      arr.add(new Permission("Get categories upload with pagination", "/category/list-upload", "GET", "CATEGORIES"));
+      arr.add(
+          new Permission("Get categories with pagination", "/category/list", "GET", "CATEGORIES"));
+      arr.add(
+          new Permission("Get categories upload with pagination", "/category/list-upload", "GET",
+              "CATEGORIES"));
 
       arr.add(new Permission("Create a follow", "/follow/", "POST", "FOLLOWS"));
       arr.add(new Permission("Unfollow", "/follow/", "DELETE", "FOLLOWS"));
       arr.add(new Permission("Get follows with pagination", "/follow/list", "GET", "FOLLOWS"));
-      arr.add(new Permission("Get followings with pagination", "/follow/list-following", "GET", "FOLLOWS"));
+      arr.add(new Permission("Get followings with pagination", "/follow/list-following", "GET",
+          "FOLLOWS"));
       arr.add(new Permission("Delete a follow", "/follow/{id}", "DELETE", "FOLLOWS"));
 
       arr.add(new Permission("Add book to favorite", "/favorite-book/", "POST", "FAVORITES"));
-      arr.add(new Permission("Delete book from favorite", "/favorite-book/", "DELETE", "FAVORITES"));
-      arr.add(new Permission("Get favorites of user with pagination", "/favorite-book/list-of-user", "GET", "FAVORITES"));
-      arr.add(new Permission("Get favorite book list of user with pagination", "/favorite-book/books-of-user/{userId}", "GET", "FAVORITES"));
+      arr.add(
+          new Permission("Delete book from favorite", "/favorite-book/", "DELETE", "FAVORITES"));
+      arr.add(new Permission("Get favorites of user with pagination", "/favorite-book/list-of-user",
+          "GET", "FAVORITES"));
+      arr.add(new Permission("Get favorite book list of user with pagination",
+          "/favorite-book/books-of-user/{userId}", "GET", "FAVORITES"));
 
       arr.add(new Permission("Create a comment", "/review/comment", "POST", "COMMENTS"));
       arr.add(new Permission("Update a comment", "/review/comment/{id}", "PUT", "COMMENTS"));
       arr.add(new Permission("Delete a comment", "/review/comment/{id}", "DELETE", "COMMENTS"));
-      arr.add(new Permission("Get comments with pagination", "/review/comment/list", "GET", "COMMENTS"));
+      arr.add(new Permission("Get comments with pagination", "/review/comment/list", "GET",
+          "COMMENTS"));
 
       arr.add(new Permission("Create a rating", "/review/rating", "POST", "RATINGS"));
       arr.add(new Permission("Update a rating", "/review/rating/{id}", "PUT", "RATINGS"));
       arr.add(new Permission("Delete a rating", "/review/rating/{id}", "DELETE", "RATINGS"));
-      arr.add(new Permission("Get ratings with pagination", "/review/rating/list", "GET", "RATINGS"));
+      arr.add(
+          new Permission("Get ratings with pagination", "/review/rating/list", "GET", "RATINGS"));
 
       arr.add(new Permission("Create a review", "/review/{bookId}", "POST", "REVIEWS"));
       arr.add(new Permission("Delete a review", "/review/", "DELETE", "REVIEWS"));
@@ -103,6 +113,8 @@ public class DatabaseInitializer implements CommandLineRunner {
       arr.add(new Permission("Get explore", "/book/explore", "GET", "BOOKS"));
       arr.add(new Permission("Get a book detail", "/book/detail-book/{id}", "GET", "BOOKS"));
 
+      arr.add(new Permission("Get statistics of dashboard", "/dashboard", "GET", "DASHBOARD"));
+
       permissionRepository.saveAll(arr);
     }
 
@@ -119,19 +131,29 @@ public class DatabaseInitializer implements CommandLineRunner {
       List<Permission> userPermissions = new ArrayList<>();
       userPermissions.add(permissionRepository.findByApiPathAndMethod("/follow/", "POST").get());
       userPermissions.add(permissionRepository.findByApiPathAndMethod("/follow/", "DELETE").get());
-      userPermissions.add(permissionRepository.findByApiPathAndMethod("/follow/list-following", "GET").get());
+      userPermissions.add(
+          permissionRepository.findByApiPathAndMethod("/follow/list-following", "GET").get());
       userPermissions.add(permissionRepository.findByApiPathAndMethod("/user/{id}", "GET").get());
-      userPermissions.add(permissionRepository.findByApiPathAndMethod("/user/change-info", "PUT").get());
-      userPermissions.add(permissionRepository.findByApiPathAndMethod("/user/change-password", "PATCH").get());
+      userPermissions.add(
+          permissionRepository.findByApiPathAndMethod("/user/change-info", "PUT").get());
+      userPermissions.add(
+          permissionRepository.findByApiPathAndMethod("/user/change-password", "PATCH").get());
       userPermissions.add(permissionRepository.findByApiPathAndMethod("/user/search", "GET").get());
-      userPermissions.add(permissionRepository.findByApiPathAndMethod("/user/profile/{id}", "GET").get());
-      userPermissions.add(permissionRepository.findByApiPathAndMethod("/book/detail-book/{id}", "GET").get());
-      userPermissions.add(permissionRepository.findByApiPathAndMethod("/book/upload-post", "POST").get());
+      userPermissions.add(
+          permissionRepository.findByApiPathAndMethod("/user/profile/{id}", "GET").get());
+      userPermissions.add(
+          permissionRepository.findByApiPathAndMethod("/book/detail-book/{id}", "GET").get());
+      userPermissions.add(
+          permissionRepository.findByApiPathAndMethod("/book/upload-post", "POST").get());
       userPermissions.add(permissionRepository.findByApiPathAndMethod("/book/search", "GET").get());
-      userPermissions.add(permissionRepository.findByApiPathAndMethod("/book/list-book-user", "GET").get());
-      userPermissions.add(permissionRepository.findByApiPathAndMethod("/book/home-page", "GET").get());
-      userPermissions.add(permissionRepository.findByApiPathAndMethod("/book/explore", "GET").get());
-      userPermissions.add(permissionRepository.findByApiPathAndMethod("/category/list-upload", "GET").get());
+      userPermissions.add(
+          permissionRepository.findByApiPathAndMethod("/book/list-book-user", "GET").get());
+      userPermissions.add(
+          permissionRepository.findByApiPathAndMethod("/book/home-page", "GET").get());
+      userPermissions.add(
+          permissionRepository.findByApiPathAndMethod("/book/explore", "GET").get());
+      userPermissions.add(
+          permissionRepository.findByApiPathAndMethod("/category/list-upload", "GET").get());
       userPermissions.addAll(permissionRepository.findByModule("FAVORITES"));
       userPermissions.addAll(permissionRepository.findByModule("REVIEWS"));
 
