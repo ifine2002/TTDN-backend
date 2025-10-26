@@ -1,9 +1,6 @@
 package vn.ifine.service.impl;
 
-import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -12,7 +9,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.ifine.dto.request.ReqBookDTO;
@@ -38,6 +34,7 @@ import vn.ifine.repository.RatingRepository;
 import vn.ifine.service.BookService;
 import vn.ifine.service.FileService;
 import vn.ifine.service.UserService;
+import vn.ifine.service.WebSocketService;
 import vn.ifine.specification.BookSpecification;
 import vn.ifine.util.BookStatus;
 
@@ -46,14 +43,12 @@ import vn.ifine.util.BookStatus;
 @RequiredArgsConstructor
 public class BookServiceImpl implements BookService {
 
-
-
   private final BookRepository bookRepository;
   private final CategoryRepository categoryRepository;
   private final RatingRepository ratingRepository;
   private final CommentRepository commentRepository;
   private final FileService fileService;
-  private final SimpMessagingTemplate messagingTemplate;
+  private final WebSocketService webSocketService;
   private final UserService userService;
 
   // for admin
@@ -106,41 +101,10 @@ public class BookServiceImpl implements BookService {
 
     ResAdminBookDTO adminBook = this.convertToResAdminBook(book, user);
 
-    this.sendAdminBookNotification("create", adminBook);
+    this.webSocketService.sendAdminBookNotification("create", adminBook);
 
     log.info("User upload book success, bookId={}", book.getId());
     return adminBook;
-  }
-
-  private ResAdminBookDTO convertToResAdminBook(Book book, User user) {
-    Set<ResCategoryInBook> resCategories = book.getCategories().stream()
-        .map(c -> {
-          ResCategoryInBook x = new ResCategoryInBook();
-          x.setId(c.getId());
-          x.setName(c.getName());
-          return x;
-        })
-        .collect(Collectors.toSet());
-
-    return ResAdminBookDTO.builder()
-        .bookId(book.getId())
-        .bookName(book.getName())
-        .description(book.getDescription())
-        .publishedDate(book.getPublishedDate())
-        .bookFormat(book.getBookFormat())
-        .bookSaleLink(book.getBookSaleLink())
-        .language(book.getLanguage())
-        .imageBook(book.getImage())
-        .author(book.getAuthor())
-        .categories(resCategories)
-        .userId(user.getId())
-        .fullName(user.getFullName())
-        .avatar(user.getImage())
-        .createdAt(book.getCreatedAt())
-        .updatedAt(book.getUpdatedAt())
-        .createdBy(book.getCreatedBy())
-        .updatedBy(book.getUpdatedBy())
-        .build();
   }
 
   @Override
@@ -199,22 +163,13 @@ public class BookServiceImpl implements BookService {
     return this.convertToResBook(book);
   }
 
-  private void sendAdminBookNotification(String action, Object data) {
-    Map<String, Object> notification = new HashMap<>();
-    notification.put("action", action);
-    notification.put("data", data);
-    notification.put("timestamp", LocalDateTime.now());
-
-    messagingTemplate.convertAndSend("/topic/admin-books", notification);
-  }
-
   @Override
   public void approveBook(Long bookId) {
     Book book = this.getById(bookId);
     book.setStatus(BookStatus.ACTIVE);
 
     bookRepository.save(book);
-    this.sendAdminBookNotification("approve", this.convertToResPost(book));
+    this.webSocketService.sendAdminBookNotification("approve", this.convertToResPost(book));
   }
 
   @Override
@@ -223,7 +178,7 @@ public class BookServiceImpl implements BookService {
     book.setStatus(BookStatus.INACTIVE);
 
     bookRepository.save(book);
-    this.sendAdminBookNotification("reject", null);
+    this.webSocketService.sendAdminBookNotification("reject", null);
   }
 
   @Override
@@ -354,6 +309,112 @@ public class BookServiceImpl implements BookService {
         .build();
   }
 
+  @Override
+  public ResDetailBook getBookDetail(long id) {
+    Book book = bookRepository.findByIdAndStatus(id, BookStatus.ACTIVE)
+        .orElseThrow(() -> new ResourceNotFoundException("Not found book"));
+    List<Rating> ratings = ratingRepository.findByBookId(id);
+    double avgRating = ratings.stream()
+        .mapToLong(Rating::getStars)
+        .average()
+        .orElse(0.0);
+    ResFeedBack resFeedBack = new ResFeedBack();
+    resFeedBack.setAverageRating(avgRating);
+    resFeedBack.setRatingCount(ratings.size());
+    resFeedBack.setTotalOneStar(ratingRepository.countByBookIdAndStars(id, 1));
+    resFeedBack.setTotalTwoStar(ratingRepository.countByBookIdAndStars(id, 2));
+    resFeedBack.setTotalThreeStar(ratingRepository.countByBookIdAndStars(id, 3));
+    resFeedBack.setTotalFourStar(ratingRepository.countByBookIdAndStars(id, 4));
+    resFeedBack.setTotalFiveStar(ratingRepository.countByBookIdAndStars(id, 5));
+    Set<ResCategoryInBook> resCategories = book.getCategories().stream()
+        .map(c -> {
+          ResCategoryInBook x = new ResCategoryInBook();
+          x.setId(c.getId());
+          x.setName(c.getName());
+          return x;
+        })
+        .collect(Collectors.toSet());
+    List<Comment> commentReview = commentRepository.findByBookIdAndIsRatingCommentTrue(id);
+
+    List<ResReviewDTO> resReviewDTOs = ratings.stream().map(rv -> {
+      // Tìm comment tương ứng với rating (dựa trên userId)
+      Optional<Comment> ratingComment = commentReview.stream()
+          .filter(comment -> comment.getUser().getId().equals(rv.getUser().getId()))
+          .findFirst();
+
+      return ResReviewDTO.builder()
+          .stars(rv.getStars())
+          .ratingId(rv.getId())
+          .commentId(ratingComment.map(Comment::getId).orElse(null))
+          .image(rv.getUser().getImage())
+          .fullName(rv.getUser().getFullName())
+          .userId(rv.getUser().getId())
+          .comment(ratingComment.map(Comment::getComment).orElse(null))
+          .createdAt(rv.getCreatedAt())
+          .updatedAt(rv.getUpdatedAt())
+          .build();
+    }).toList();
+    return ResDetailBook.builder()
+        .id(book.getId())
+        .name(book.getName())
+        .description(book.getDescription())
+        .image(book.getImage())
+        .publishedDate(book.getPublishedDate())
+        .bookFormat(book.getBookFormat())
+        .bookSaleLink(book.getBookSaleLink())
+        .language(book.getLanguage())
+        .author(book.getAuthor())
+        .status(book.getStatus())
+        .stars(resFeedBack)
+        .reviews(resReviewDTOs)
+        .categories(resCategories)
+        .createdBy(book.getCreatedBy())
+        .updatedBy(book.getUpdatedBy())
+        .createdAt(book.getCreatedAt())
+        .updatedAt(book.getUpdatedAt())
+        .build();
+  }
+
+  @Override
+  public ResBookSearch convertToResBookSearch(Book book){
+    List<Rating> ratings = ratingRepository.findByBookId(book.getId());
+
+    double avgRating = ratings.stream()
+        .mapToLong(Rating::getStars)
+        .average()
+        .orElse(0.0);
+
+    return ResBookSearch.builder()
+        .id(book.getId())
+        .name(book.getName())
+        .author(book.getAuthor())
+        .image(book.getImage())
+        .averageRating(avgRating)
+        .ratingCount(ratings.size())
+        .publishedDate(book.getPublishedDate())
+        .build();
+  }
+
+  @Override
+  public ResultPaginationDTO searchHome(Pageable pageable, String keyword) {
+    Specification<Book> spec = BookSpecification.search(keyword);
+
+    Page<Book> pageBook = bookRepository.findAll(spec, pageable);
+    ResultPaginationDTO rs = new ResultPaginationDTO();
+
+    rs.setPage(pageable.getPageNumber() + 1);
+    rs.setPageSize(pageable.getPageSize());
+    rs.setTotalPages(pageBook.getTotalPages());
+    rs.setTotalElements(pageBook.getTotalElements());
+    // convert data
+    List<ResBookSearch> listBook = pageBook.getContent()
+        .stream().map(this::convertToResBookSearch)
+        .toList();
+
+    rs.setResult(listBook);
+    return rs;
+  }
+
   private ResPost convertToResPost(Book book) {
     User user = userService.getUserByEmail(book.getCreatedBy());
     List<Rating> ratings = ratingRepository.findByBookId(book.getId());
@@ -424,23 +485,7 @@ public class BookServiceImpl implements BookService {
         .build();
   }
 
-  @Override
-  public ResDetailBook getBookDetail(long id) {
-    Book book = bookRepository.findByIdAndStatus(id, BookStatus.ACTIVE)
-        .orElseThrow(() -> new ResourceNotFoundException("Not found book"));
-    List<Rating> ratings = ratingRepository.findByBookId(id);
-    double avgRating = ratings.stream()
-        .mapToLong(Rating::getStars)
-        .average()
-        .orElse(0.0);
-    ResFeedBack resFeedBack = new ResFeedBack();
-    resFeedBack.setAverageRating(avgRating);
-    resFeedBack.setRatingCount(ratings.size());
-    resFeedBack.setTotalOneStar(ratingRepository.countByBookIdAndStars(id, 1));
-    resFeedBack.setTotalTwoStar(ratingRepository.countByBookIdAndStars(id, 2));
-    resFeedBack.setTotalThreeStar(ratingRepository.countByBookIdAndStars(id, 3));
-    resFeedBack.setTotalFourStar(ratingRepository.countByBookIdAndStars(id, 4));
-    resFeedBack.setTotalFiveStar(ratingRepository.countByBookIdAndStars(id, 5));
+  private ResAdminBookDTO convertToResAdminBook(Book book, User user) {
     Set<ResCategoryInBook> resCategories = book.getCategories().stream()
         .map(c -> {
           ResCategoryInBook x = new ResCategoryInBook();
@@ -449,83 +494,25 @@ public class BookServiceImpl implements BookService {
           return x;
         })
         .collect(Collectors.toSet());
-    List<Comment> commentReview = commentRepository.findByBookIdAndIsRatingCommentTrue(id);
 
-    List<ResReviewDTO> resReviewDTOs = ratings.stream().map(rv -> {
-      // Tìm comment tương ứng với rating (dựa trên userId)
-      Optional<Comment> ratingComment = commentReview.stream()
-          .filter(comment -> comment.getUser().getId().equals(rv.getUser().getId()))
-          .findFirst();
-
-      return ResReviewDTO.builder()
-          .stars(rv.getStars())
-          .ratingId(rv.getId())
-          .commentId(ratingComment.map(Comment::getId).orElse(null))
-          .image(rv.getUser().getImage())
-          .fullName(rv.getUser().getFullName())
-          .userId(rv.getUser().getId())
-          .comment(ratingComment.map(Comment::getComment).orElse(null))
-          .createdAt(rv.getCreatedAt())
-          .updatedAt(rv.getUpdatedAt())
-          .build();
-    }).toList();
-    return ResDetailBook.builder()
-        .id(book.getId())
-        .name(book.getName())
+    return ResAdminBookDTO.builder()
+        .bookId(book.getId())
+        .bookName(book.getName())
         .description(book.getDescription())
-        .image(book.getImage())
         .publishedDate(book.getPublishedDate())
         .bookFormat(book.getBookFormat())
         .bookSaleLink(book.getBookSaleLink())
         .language(book.getLanguage())
+        .imageBook(book.getImage())
         .author(book.getAuthor())
-        .status(book.getStatus())
-        .stars(resFeedBack)
-        .reviews(resReviewDTOs)
         .categories(resCategories)
-        .createdBy(book.getCreatedBy())
-        .updatedBy(book.getUpdatedBy())
+        .userId(user.getId())
+        .fullName(user.getFullName())
+        .avatar(user.getImage())
         .createdAt(book.getCreatedAt())
         .updatedAt(book.getUpdatedAt())
+        .createdBy(book.getCreatedBy())
+        .updatedBy(book.getUpdatedBy())
         .build();
-  }
-  @Override
-  public ResBookSearch convertToResBookSearch(Book book){
-    List<Rating> ratings = ratingRepository.findByBookId(book.getId());
-
-    double avgRating = ratings.stream()
-        .mapToLong(Rating::getStars)
-        .average()
-        .orElse(0.0);
-
-    return ResBookSearch.builder()
-        .id(book.getId())
-        .name(book.getName())
-        .author(book.getAuthor())
-        .image(book.getImage())
-        .averageRating(avgRating)
-        .ratingCount(ratings.size())
-        .publishedDate(book.getPublishedDate())
-        .build();
-  }
-
-  @Override
-  public ResultPaginationDTO searchHome(Pageable pageable, String keyword) {
-    Specification<Book> spec = BookSpecification.search(keyword);
-
-    Page<Book> pageBook = bookRepository.findAll(spec, pageable);
-    ResultPaginationDTO rs = new ResultPaginationDTO();
-
-    rs.setPage(pageable.getPageNumber() + 1);
-    rs.setPageSize(pageable.getPageSize());
-    rs.setTotalPages(pageBook.getTotalPages());
-    rs.setTotalElements(pageBook.getTotalElements());
-    // convert data
-    List<ResBookSearch> listBook = pageBook.getContent()
-        .stream().map(this::convertToResBookSearch)
-        .toList();
-
-    rs.setResult(listBook);
-    return rs;
   }
 }

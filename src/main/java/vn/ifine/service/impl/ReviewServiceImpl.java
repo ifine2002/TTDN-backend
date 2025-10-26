@@ -1,16 +1,12 @@
 package vn.ifine.service.impl;
 
-import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.ifine.dto.request.ReqCommentDTO;
@@ -32,6 +28,7 @@ import vn.ifine.repository.RatingRepository;
 import vn.ifine.service.BookService;
 import vn.ifine.service.ReviewService;
 import vn.ifine.service.UserService;
+import vn.ifine.service.WebSocketService;
 
 @Service
 @Slf4j(topic = "REVIEW-SERVICE-IMPL")
@@ -41,9 +38,8 @@ public class ReviewServiceImpl implements ReviewService {
   private final RatingRepository ratingRepository;
   private final CommentRepository commentRepository;
   private final UserService userService;
-  private final SimpMessagingTemplate messagingTemplate;
+  private final WebSocketService webSocketService;
   private final BookService bookService;
-
 
   @Override
   public ResRatingDTO createRating(ReqRatingDTO request) {
@@ -80,19 +76,6 @@ public class ReviewServiceImpl implements ReviewService {
         .orElseThrow(() -> new ResourceNotFoundException("Not found rating with id = " + id));
     ratingRepository.delete(rating);
     log.info("Rating has been deleted success, ratingId={}", rating.getId());
-  }
-
-  private ResRatingDTO convertToResRatingDTO(Rating rating) {
-    return ResRatingDTO.builder()
-        .id(rating.getId())
-        .userId(rating.getUser().getId())
-        .bookId(rating.getBook().getId())
-        .stars(rating.getStars())
-        .createdAt(rating.getCreatedAt())
-        .updatedAt(rating.getUpdatedAt())
-        .createdBy(rating.getCreatedBy())
-        .updatedBy(rating.getUpdatedBy())
-        .build();
   }
 
   @Override
@@ -162,29 +145,6 @@ public class ReviewServiceImpl implements ReviewService {
     return rs;
   }
 
-  private ResComment convertToResComment(Comment comment) {
-    return ResComment.builder()
-        .id(comment.getId())
-        .comment(comment.getComment())
-        .isRatingComment(comment.isRatingComment())
-        .userId(comment.getUser().getId())
-        .bookId(comment.getBook().getId())
-        .createdAt(comment.getCreatedAt())
-        .updatedAt(comment.getUpdatedAt())
-        .createdBy(comment.getCreatedBy())
-        .updatedBy(comment.getUpdatedBy())
-        .build();
-  }
-
-  private void sendReviewNotification(String action, Long bookId, Object data) {
-    Map<String, Object> notification = new HashMap<>();
-    notification.put("action", action);
-    notification.put("data", data);
-    notification.put("timestamp", LocalDateTime.now());
-
-    messagingTemplate.convertAndSend("/topic/reviews/" + bookId, notification);
-  }
-
   @Override
   @Transactional
   public void createReview(Long bookId, ReviewRequestDto request, String email) {
@@ -215,7 +175,7 @@ public class ReviewServiceImpl implements ReviewService {
       comment = commentRepository.save(comment);
     }
 
-    // 👉 Gửi WebSocket comment sau khi lưu
+    //Gửi WebSocket comment sau khi lưu
     ResReviewDTO res = new ResReviewDTO();
     res.setFullName(user.getFullName());
     res.setUserId(user.getId());
@@ -228,7 +188,7 @@ public class ReviewServiceImpl implements ReviewService {
       res.setCommentId(comment.getId());
       res.setComment(comment.getComment());
     }
-    sendReviewNotification("create", bookId, res);
+    webSocketService.sendReviewNotification("create", bookId, res);
   }
 
   @Override
@@ -266,8 +226,7 @@ public class ReviewServiceImpl implements ReviewService {
 
       comment = commentRepository.save(comment);
     }
-
-    // 👉 Gửi WebSocket comment sau khi lưu
+    // Gửi WebSocket comment sau khi lưu
     ResReviewDTO res = new ResReviewDTO();
     res.setFullName(user.getFullName());
     res.setUserId(user.getId());
@@ -283,7 +242,7 @@ public class ReviewServiceImpl implements ReviewService {
       res.setCommentId(null);
       res.setComment(null);
     }
-    sendReviewNotification("update", rating.getBook().getId(), res);
+    webSocketService.sendReviewNotification("update", rating.getBook().getId(), res);
   }
 
   @Override
@@ -292,22 +251,18 @@ public class ReviewServiceImpl implements ReviewService {
     log.info("Request delete review commentId={}, ratingId={}, emailUser={}", commentId, ratingId,
         email);
     User user = userService.getUserByEmail(email);
-
     // Xóa rating
     Optional<Rating> ratingOptional = ratingRepository.findById(ratingId);
     if (ratingOptional.isEmpty()) {
       throw new ResourceNotFoundException("Rating not found with id: " + ratingId);
     }
-
     Rating rating = ratingOptional.get();
     // Kiểm tra quyền xóa (chỉ cho phép người tạo xóa)
     if (!rating.getUser().getId().equals(user.getId())) {
       throw new CustomException("You don't have permission to delete this rating");
     }
-
     Book book = rating.getBook();
     Long bookId = book.getId();
-
     // Xóa comment nếu có
     if (commentId != null) {
       Optional<Comment> commentOptional = commentRepository.findById(commentId);
@@ -320,11 +275,36 @@ public class ReviewServiceImpl implements ReviewService {
         commentRepository.delete(comment);
       }
     }
-
     // Xóa rating
     ratingRepository.delete(rating);
-
     // Gửi thông báo WebSocket
-    sendReviewNotification("delete", bookId, user.getId());
+    webSocketService.sendReviewNotification("delete", bookId, user.getId());
+  }
+
+  private ResComment convertToResComment(Comment comment) {
+    return ResComment.builder()
+        .id(comment.getId())
+        .comment(comment.getComment())
+        .isRatingComment(comment.isRatingComment())
+        .userId(comment.getUser().getId())
+        .bookId(comment.getBook().getId())
+        .createdAt(comment.getCreatedAt())
+        .updatedAt(comment.getUpdatedAt())
+        .createdBy(comment.getCreatedBy())
+        .updatedBy(comment.getUpdatedBy())
+        .build();
+  }
+
+  private ResRatingDTO convertToResRatingDTO(Rating rating) {
+    return ResRatingDTO.builder()
+        .id(rating.getId())
+        .userId(rating.getUser().getId())
+        .bookId(rating.getBook().getId())
+        .stars(rating.getStars())
+        .createdAt(rating.getCreatedAt())
+        .updatedAt(rating.getUpdatedAt())
+        .createdBy(rating.getCreatedBy())
+        .updatedBy(rating.getUpdatedBy())
+        .build();
   }
 }
