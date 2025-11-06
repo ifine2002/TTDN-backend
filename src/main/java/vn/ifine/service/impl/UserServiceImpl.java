@@ -100,8 +100,8 @@ public class UserServiceImpl implements UserService {
         .build();
     String hashPassword = this.passwordEncoder.encode(request.getPassword());
     user.setPassword(hashPassword);
-    if (request.getRoleId() != null) {
-      Role role = roleService.getById(request.getRoleId());
+    if (request.getRole() != null) {
+      Role role = roleService.getById(request.getRole().getId());
       user.setRole(role);
     }
     user = userRepository.save(user);
@@ -128,8 +128,8 @@ public class UserServiceImpl implements UserService {
     user.setUserDOB(reqUser.getUserDOB());
     user.setAddress(reqUser.getAddress());
     user.setStatus(reqUser.getStatus());
-    if (reqUser.getRoleId() != null) {
-      Role role = roleService.getById(reqUser.getRoleId());
+    if (reqUser.getRole() != null) {
+      Role role = roleService.getById(reqUser.getRole().getId());
       user.setRole(role);
     }
 

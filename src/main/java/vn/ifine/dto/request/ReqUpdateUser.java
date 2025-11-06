@@ -9,6 +9,7 @@ import lombok.Setter;
 import org.springframework.web.multipart.MultipartFile;
 import vn.ifine.dto.validator.EnumPattern;
 import vn.ifine.dto.validator.ValidImage;
+import vn.ifine.model.Role;
 import vn.ifine.util.GenderEnum;
 import vn.ifine.util.UserStatus;
 
@@ -41,5 +42,5 @@ public class ReqUpdateUser {
   private UserStatus status;
 
   @NotNull(message = "role must be not null")
-  private Integer roleId;
+  private Role role;
 }
