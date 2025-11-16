@@ -114,6 +114,7 @@ public class DatabaseInitializer implements CommandLineRunner {
       arr.add(new Permission("Get a book detail", "/book/detail-book/{id}", "GET", "BOOKS"));
 
       arr.add(new Permission("Get statistics of dashboard", "/dashboard", "GET", "DASHBOARD"));
+      arr.add(new Permission("Get statistics new book of dashboard", "/dashboard/new-books", "GET", "DASHBOARD"));
 
       permissionRepository.saveAll(arr);
     }
